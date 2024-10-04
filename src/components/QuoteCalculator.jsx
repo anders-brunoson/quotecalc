@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download, Settings } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -20,11 +22,11 @@ import CSVUpload from './CSVUpload';
 const QuoteCalculator = () => {
   const [months, setMonths] = useState(['jan', 'feb', 'mar',`apr`,'may', 'jun', 'jul',`aug`,'sep', 'oct', 'nov',`dec`]);
   const [roles, setRoles] = useState([
-    { id: '1', name: 'Systems Developer BE' },
-    { id: '2', name: 'Systems Developer FE' },
-    { id: '3', name: 'UX Designer' },
-    { id: '4', name: 'Digital Designer' },
-    { id: '5', name: 'Project Manager' }
+    { id: '1', name: 'Systems Developer BE', type: 'Senior' },
+    { id: '2', name: 'Systems Developer FE', type: 'Medior' },
+    { id: '3', name: 'UX Designer', type: 'Junior' },
+    { id: '4', name: 'Digital Designer', type: 'Senior' },
+    { id: '5', name: 'Project Manager', type: 'Senior' }
   ]);
 
   const [commitments, setCommitments] = useState({});
@@ -43,6 +45,12 @@ const QuoteCalculator = () => {
   const editInputRef = useRef(null);
   const [monthOrder, setMonthOrder] = React.useState([]);
   const [openRoleSettings, setOpenRoleSettings] = useState(null);  
+
+  const handleRoleTypeChange = (roleId, newType) => {
+    setRoles(prev => prev.map(role => 
+      role.id === roleId ? { ...role, type: newType } : role
+    ));
+  };
 
   const handleDataUploaded = (data) => {
     setMonths(data.months);
@@ -479,13 +487,36 @@ const QuoteCalculator = () => {
             <DialogTitle>Settings for {role.name}</DialogTitle>
           </DialogHeader>
           <DialogDescription>
-            {/* We'll add the actual settings here later */}
-            <p>Extra settings for {role.name} will be added here.</p>
+            <div className="space-y-4">
+              <div>
+                <Label>Role Type</Label>
+                <RadioGroup
+                  value={role.type}
+                  onValueChange={(value) => handleRoleTypeChange(role.id, value)}
+                  className="flex flex-col space-y-1 mt-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Junior" id={`${role.id}-junior`} />
+                    <Label htmlFor={`${role.id}-junior`}>Junior</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Medior" id={`${role.id}-medior`} />
+                    <Label htmlFor={`${role.id}-medior`}>Medior</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Senior" id={`${role.id}-senior`} />
+                    <Label htmlFor={`${role.id}-senior`}>Senior</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              {/* You can add more settings here in the future */}
+            </div>
           </DialogDescription>
         </DialogContent>
       </Dialog>
     );
   };  
+
 
   return (
     <div className={`p-4 w-full ${darkMode ? 'dark' : ''}`}>
@@ -586,9 +617,9 @@ const QuoteCalculator = () => {
             </div>
 
             {selectedMonths.length > 0 && (
-              <>
-                {months.map(month => (
-                  <TabsContent key={month} value={month}>
+            <>
+              {months.map(month => (
+                <TabsContent key={month} value={month}>
                     <div className="mt-8 mb-8 flex justify-between items-center">
                       <label className="block text-sm font-medium">
                         Working days in {capitalize(month)} (CHECK MANUALLY!):
@@ -603,21 +634,22 @@ const QuoteCalculator = () => {
                       </label>
                     </div>
                     <div className="space-y-4 mb-6">
-                      {roles.map((role, index) => (
-                        <div
-                          key={role.id}
-                          className="p-4 border rounded-lg relative role-card"
-                          onDragOver={(e) => onDragOver(e, index)}
-                          onDrop={(e) => onDrop(e, index)}
-                        >
-                          <div className="flex items-center mb-2">
-                            <div 
-                              className="mr-2 cursor-move drag-handle"
-                              draggable
-                              onDragStart={(e) => onDragStart(e, index)}
-                              onDragEnd={onDragEnd}
-                            >
-                              <GripVertical className="h-5 w-5 text-gray-400" />
+                    {roles.map((role, index) => (
+                      <div
+                        key={role.id}
+                        className="p-4 border rounded-lg relative role-card"
+                        onDragOver={(e) => onDragOver(e, index)}
+                        onDrop={(e) => onDrop(e, index)}
+                      >
+                        <div className="flex items-center mb-2">
+                          <div 
+                            className="mr-2 cursor-move drag-handle"
+                            draggable
+                            onDragStart={(e) => onDragStart(e, index)}
+                            onDragEnd={onDragEnd}
+                          >
+                          <GripVertical className="h-5 w-5 text-gray-400" />
+                          <span className="ml-2 text-xs text-gray-500">({role.type})</span>
                             </div>
                             <Input
                               value={role.name}
