@@ -29,6 +29,12 @@ const QuoteCalculator = () => {
     { id: '5', name: 'Project Manager', type: 'Senior' }
   ]);
 
+  const [hourlyCosts, setHourlyCosts] = useState({
+    Junior: 500,
+    Medior: 700,
+    Senior: 1000
+  });
+
   const [commitments, setCommitments] = useState({});
   const [hourlyRates, setHourlyRates] = useState({});
   const [workingDays, setWorkingDays] = useState({});
@@ -444,14 +450,15 @@ const QuoteCalculator = () => {
       breakdown: {},
       hours: {},
       commitments: {},
-      hourlyRates: {} // Add this line
+      hourlyRates: {},
+      grossMargin: {}
     };
 
     roles.forEach(role => {
       totalSummary.breakdown[role.id] = 0;
       totalSummary.hours[role.id] = 0;
       totalSummary.commitments[role.id] = 0;
-      totalSummary.hourlyRates[role.id] = hourlyRates[role.id] || 0; // Add this line
+      totalSummary.hourlyRates[role.id] = hourlyRates[role.id] || 0;
     });
 
     monthOrder.forEach(month => {
@@ -470,6 +477,12 @@ const QuoteCalculator = () => {
       totalSummary.commitments[role.id] = Math.round(totalSummary.commitments[role.id] / monthOrder.length);
     });
 
+    roles.forEach(role => {
+      const revenue = totalSummary.breakdown[role.id];
+      const cost = totalSummary.hours[role.id] * hourlyCosts[role.type];
+      totalSummary.grossMargin[role.id] = revenue - cost;
+    });
+
     return totalSummary;
   };
 
@@ -480,6 +493,31 @@ const QuoteCalculator = () => {
   };
 
   const RoleSettingsModal = ({ role, isOpen, onClose }) => {
+    const [localHourlyCost, setLocalHourlyCost] = useState(hourlyCosts[role.type]);
+
+    useEffect(() => {
+      setLocalHourlyCost(hourlyCosts[role.type]);
+    }, [role.type, hourlyCosts]);
+
+    const handleRoleTypeChange = (newType) => {
+      setRoles(prev => prev.map(r => 
+        r.id === role.id ? { ...r, type: newType } : r
+      ));
+      setLocalHourlyCost(hourlyCosts[newType]);
+    };
+
+    const handleHourlyCostChange = (value) => {
+      setLocalHourlyCost(value);
+    };
+
+    const handleSave = () => {
+      setHourlyCosts(prev => ({
+        ...prev,
+        [role.type]: Number(localHourlyCost)
+      }));
+      onClose();
+    };
+
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent>
@@ -492,7 +530,7 @@ const QuoteCalculator = () => {
                 <Label>Role Type</Label>
                 <RadioGroup
                   value={role.type}
-                  onValueChange={(value) => handleRoleTypeChange(role.id, value)}
+                  onValueChange={handleRoleTypeChange}
                   className="flex flex-col space-y-1 mt-2"
                 >
                   <div className="flex items-center space-x-2">
@@ -509,14 +547,24 @@ const QuoteCalculator = () => {
                   </div>
                 </RadioGroup>
               </div>
-              {/* You can add more settings here in the future */}
+              <div>
+                <Label>Hourly Cost</Label>
+                <Input
+                  type="number"
+                  value={localHourlyCost}
+                  onChange={(e) => handleHourlyCostChange(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
             </div>
           </DialogDescription>
+          <div className="flex justify-end">
+            <Button onClick={handleSave}>Save</Button>
+          </div>
         </DialogContent>
       </Dialog>
     );
-  };  
-
+  };
 
   return (
     <div className={`p-4 w-full ${darkMode ? 'dark' : ''}`}>
@@ -730,26 +778,28 @@ const QuoteCalculator = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
-                <div className="grid grid-cols-5 font-medium">
+                <div className="grid grid-cols-6 font-medium">
                   <span className="col-span-1 text-left">Role</span>
                   <span className="text-right">Avg. Commitment</span>
                   <span className="text-right">Total Hours</span>
                   <span className="text-right">Hourly Rate</span>
                   <span className="text-right">Total Amount</span>
+                  <span className="text-right">Gross Margin</span>
                 </div>
                 {roles.map(role => {
                   const totalSummary = calculateTotalSummary();
                   return (
-                    <div key={role.id} className="grid grid-cols-5">
+                    <div key={role.id} className="grid grid-cols-6">
                       <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
                       <span className="text-right">{totalSummary.commitments[role.id] || 0}%</span>
                       <span className="text-right">{totalSummary.hours[role.id] || 0}</span>
                       <span className="text-right">{totalSummary.hourlyRates[role.id] || 0} SEK</span>
                       <span className="text-right">{(totalSummary.breakdown[role.id] || 0).toLocaleString()} SEK</span>
+                      <span className="text-right">{(totalSummary.grossMargin[role.id] || 0).toLocaleString()} SEK</span>
                     </div>
                   );
                 })}
-                <div className="grid grid-cols-5 font-bold pt-2 border-t">
+                <div className="grid grid-cols-6 font-bold pt-2 border-t">
                   <span className="col-span-1 text-left">Grand Total</span>
                   <span className="text-right">
                     {Object.values(calculateTotalSummary().commitments).reduce((sum, value) => sum + (value || 0), 0)}%
@@ -762,6 +812,9 @@ const QuoteCalculator = () => {
                   </span>
                   <span className="text-right">
                     {calculateTotalSummary().total.toLocaleString()} SEK
+                  </span>
+                  <span className="text-right">
+                    {Object.values(calculateTotalSummary().grossMargin).reduce((sum, value) => sum + (value || 0), 0).toLocaleString()} SEK
                   </span>
                 </div>
               </div>
@@ -781,23 +834,30 @@ const QuoteCalculator = () => {
                 {breakdown && hours && commitments && (
                   <CardContent>
                     <div className="space-y-2 text-sm">
-                      <div className="grid grid-cols-5 font-medium">
+                      <div className="grid grid-cols-6 font-medium">
                         <span className="col-span-1 text-left">Role</span>
                         <span className="text-right">Commitment</span>
                         <span className="text-right">Hours</span>
                         <span className="text-right">Hourly Rate</span>
                         <span className="text-right">Amount</span>
+                        <span className="text-right">Gross Margin</span>
                       </div>
-                      {roles.map(role => (
-                        <div key={role.id} className="grid grid-cols-5">
-                          <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
-                          <span className="text-right">{commitments[role.id] || 0}%</span>
-                          <span className="text-right">{hours[role.id] || 0}</span>
-                          <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
-                          <span className="text-right">{(breakdown[role.id] || 0).toLocaleString()} SEK</span>
-                        </div>
-                      ))}
-                      <div className="grid grid-cols-5 font-bold pt-2 border-t">
+                      {roles.map(role => {
+                        const revenue = breakdown[role.id] || 0;
+                        const cost = (hours[role.id] || 0) * hourlyCosts[role.type];
+                        const grossMargin = revenue - cost;
+                        return (
+                          <div key={role.id} className="grid grid-cols-6">
+                            <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
+                            <span className="text-right">{commitments[role.id] || 0}%</span>
+                            <span className="text-right">{hours[role.id] || 0}</span>
+                            <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
+                            <span className="text-right">{(breakdown[role.id] || 0).toLocaleString()} SEK</span>
+                            <span className="text-right">{grossMargin.toLocaleString()} SEK</span>
+                          </div>
+                        );
+                      })}
+                      <div className="grid grid-cols-6 font-bold pt-2 border-t">
                         <span className="col-span-1 text-left">Total</span>
                         <span className="text-right">
                           {Object.values(commitments).reduce((sum, value) => sum + (value || 0), 0)}%
@@ -810,6 +870,13 @@ const QuoteCalculator = () => {
                         </span>
                         <span className="text-right">
                           {Object.values(breakdown).reduce((sum, value) => sum + (value || 0), 0).toLocaleString()} SEK
+                        </span>
+                        <span className="text-right">
+                          {roles.reduce((sum, role) => {
+                            const revenue = breakdown[role.id] || 0;
+                            const cost = (hours[role.id] || 0) * hourlyCosts[role.type];
+                            return sum + (revenue - cost);
+                          }, 0).toLocaleString()} SEK
                         </span>
                       </div>
                     </div>
