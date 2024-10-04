@@ -455,7 +455,8 @@ const QuoteCalculator = () => {
       hours: {},
       commitments: {},
       hourlyRates: {},
-      grossMargin: {}
+      grossMargin: {},
+      grossMarginPercentage: {}
     };
 
     roles.forEach(role => {
@@ -485,6 +486,7 @@ const QuoteCalculator = () => {
       const revenue = totalSummary.breakdown[role.id];
       const cost = totalSummary.hours[role.id] * hourlyCosts[role.type];
       totalSummary.grossMargin[role.id] = revenue - cost;
+      totalSummary.grossMarginPercentage[role.id] = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
     });
 
     return totalSummary;
@@ -782,28 +784,30 @@ const QuoteCalculator = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
-                <div className="grid grid-cols-6 font-medium">
+                <div className="grid grid-cols-7 font-medium">
                   <span className="col-span-1 text-left">Role</span>
                   <span className="text-right">Avg. Commitment</span>
                   <span className="text-right">Total Hours</span>
                   <span className="text-right">Hourly Rate</span>
                   <span className="text-right">Total Amount</span>
                   <span className="text-right">Gross Margin</span>
+                  <span className="text-right">GM %</span>
                 </div>
                 {roles.map(role => {
                   const totalSummary = calculateTotalSummary();
                   return (
-                    <div key={role.id} className="grid grid-cols-6">
+                    <div key={role.id} className="grid grid-cols-7">
                       <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
                       <span className="text-right">{totalSummary.commitments[role.id] || 0}%</span>
                       <span className="text-right">{totalSummary.hours[role.id] || 0}</span>
                       <span className="text-right">{totalSummary.hourlyRates[role.id] || 0} SEK</span>
                       <span className="text-right">{(totalSummary.breakdown[role.id] || 0).toLocaleString()} SEK</span>
                       <span className="text-right">{(totalSummary.grossMargin[role.id] || 0).toLocaleString()} SEK</span>
+                      <span className="text-right">{totalSummary.grossMarginPercentage[role.id].toFixed(0)}%</span>
                     </div>
                   );
                 })}
-                <div className="grid grid-cols-6 font-bold pt-2 border-t">
+                <div className="grid grid-cols-7 font-bold pt-2 border-t">
                   <span className="col-span-1 text-left">Grand Total</span>
                   <span className="text-right">
                     {Object.values(calculateTotalSummary().commitments).reduce((sum, value) => sum + (value || 0), 0)}%
@@ -819,6 +823,9 @@ const QuoteCalculator = () => {
                   </span>
                   <span className="text-right">
                     {Object.values(calculateTotalSummary().grossMargin).reduce((sum, value) => sum + (value || 0), 0).toLocaleString()} SEK
+                  </span>
+                  <span className="text-right">
+                    {(Object.values(calculateTotalSummary().grossMargin).reduce((sum, value) => sum + (value || 0), 0) / calculateTotalSummary().total * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>
@@ -838,30 +845,33 @@ const QuoteCalculator = () => {
                 {breakdown && hours && commitments && (
                   <CardContent>
                     <div className="space-y-2 text-sm">
-                      <div className="grid grid-cols-6 font-medium">
+                      <div className="grid grid-cols-7 font-medium">
                         <span className="col-span-1 text-left">Role</span>
                         <span className="text-right">Commitment</span>
                         <span className="text-right">Hours</span>
                         <span className="text-right">Hourly Rate</span>
                         <span className="text-right">Amount</span>
                         <span className="text-right">Gross Margin</span>
+                        <span className="text-right">GM %</span>
                       </div>
                       {roles.map(role => {
                         const revenue = breakdown[role.id] || 0;
                         const cost = (hours[role.id] || 0) * hourlyCosts[role.type];
                         const grossMargin = revenue - cost;
+                        const grossMarginPercentage = revenue > 0 ? (grossMargin / revenue) * 100 : 0;
                         return (
-                          <div key={role.id} className="grid grid-cols-6">
+                          <div key={role.id} className="grid grid-cols-7">
                             <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
                             <span className="text-right">{commitments[role.id] || 0}%</span>
                             <span className="text-right">{hours[role.id] || 0}</span>
                             <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
                             <span className="text-right">{(breakdown[role.id] || 0).toLocaleString()} SEK</span>
                             <span className="text-right">{grossMargin.toLocaleString()} SEK</span>
+                            <span className="text-right">{grossMarginPercentage.toFixed(0)}%</span>
                           </div>
                         );
                       })}
-                      <div className="grid grid-cols-6 font-bold pt-2 border-t">
+                      <div className="grid grid-cols-7 font-bold pt-2 border-t">
                         <span className="col-span-1 text-left">Total</span>
                         <span className="text-right">
                           {Object.values(commitments).reduce((sum, value) => sum + (value || 0), 0)}%
@@ -881,6 +891,13 @@ const QuoteCalculator = () => {
                             const cost = (hours[role.id] || 0) * hourlyCosts[role.type];
                             return sum + (revenue - cost);
                           }, 0).toLocaleString()} SEK
+                        </span>
+                        <span className="text-right">
+                          {(roles.reduce((sum, role) => {
+                            const revenue = breakdown[role.id] || 0;
+                            const cost = (hours[role.id] || 0) * hourlyCosts[role.type];
+                            return sum + (revenue - cost);
+                          }, 0) / Object.values(breakdown).reduce((sum, value) => sum + (value || 0), 0) * 100).toFixed(0)}%
                         </span>
                       </div>
                     </div>
