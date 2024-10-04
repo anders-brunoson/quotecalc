@@ -20,22 +20,30 @@ const CSVUpload = ({ onDataUploaded }) => {
   const { getRootProps, getInputProps } = useDropzone({ 
     onDrop, 
     accept: '.csv',
-    noClick: true, // Disable click events on the root element
-    noKeyboard: true // Disable keyboard events on the root element
+    noClick: true,
+    noKeyboard: true
   });
 
   const processCSVData = (data) => {
-    // Filter out any rows with empty month or role
     const validData = data.filter(row => row.month && row.role);
 
     const months = [...new Set(validData.map(row => row.month))];
     const roleNames = [...new Set(validData.map(row => row.role))];
-    const roles = roleNames.map((name, index) => ({ id: (index + 1).toString(), name }));
+    const roles = roleNames.map((name, index) => ({ 
+      id: (index + 1).toString(), 
+      name,
+      type: validData.find(row => row.role === name)?.roleType || 'Senior'
+    }));
     
     const commitments = {};
     const hourlyRates = {};
     const workingHours = {};
     const workingDays = {};
+    const hourlyCosts = {
+      Junior: 0,
+      Medior: 0,
+      Senior: 0
+    };
 
     roles.forEach(role => {
       commitments[role.id] = {};
@@ -48,12 +56,15 @@ const CSVUpload = ({ onDataUploaded }) => {
       commitments[roleId][row.month] = parseInt(row.commitmentLevel);
       hourlyRates[roleId] = parseInt(row.hourlyRate);
       workingHours[roleId] = parseFloat(row.workingHoursPerDay);
-      if (!workingDays[row.month]) {
-        workingDays[row.month] = Math.round(parseInt(row.hours) / (parseFloat(row.workingHoursPerDay) * parseInt(row.commitmentLevel) / 100));
+      workingDays[row.month] = parseInt(row.workingDays);
+      
+      // Update hourlyCosts if not already set
+      if (hourlyCosts[row.roleType] === 0) {
+        hourlyCosts[row.roleType] = parseInt(row.hourlyCost);
       }
     });
 
-    return { months, roles, commitments, hourlyRates, workingHours, workingDays };
+    return { months, roles, commitments, hourlyRates, workingHours, workingDays, hourlyCosts };
   };
 
   return (

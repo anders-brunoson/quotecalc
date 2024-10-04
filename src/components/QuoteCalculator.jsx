@@ -65,10 +65,11 @@ const QuoteCalculator = () => {
     setHourlyRates(data.hourlyRates);
     setWorkingHours(data.workingHours);
     setWorkingDays(data.workingDays);
+    setHourlyCosts(data.hourlyCosts);
     setMonthOrder(data.months);
     setActiveTab(data.months[0]);
     setSelectedMonths([]);
-  };  
+  }; 
 
   useEffect(() => {
     initializeState();
@@ -335,11 +336,6 @@ const QuoteCalculator = () => {
     }
   }, [selectedMonths]);
 
-  const handleDownloadCSV = () => {
-    const csvContent = generateCSV(budget, roles, months, commitments, hourlyRates, workingDays);
-    downloadCSV(csvContent);
-  };
-
   const onDragStart = (e, index) => {
     if (e.target.closest('.drag-handle')) {
       e.stopPropagation();
@@ -411,23 +407,31 @@ const QuoteCalculator = () => {
   </Dialog>
 );
 
-  const generateCSV = (budget, roles, months, commitments, hourlyRates, workingDays) => {
-    let csvContent = "month;role;commitmentLevel;hourlyRate;workingHoursPerDay;hours;amount\n";
+  const generateCSV = (budget, roles, months, commitments, hourlyRates, workingDays, workingHours, hourlyCosts) => {
+    let csvContent = "month;role;roleType;commitmentLevel;hourlyRate;hourlyCost;workingHoursPerDay;workingDays;hours;amount\n";
 
     months.forEach(month => {
       roles.forEach(role => {
         const commitment = commitments[role.id]?.[month] || 0;
         const hourlyRate = hourlyRates[role.id] || 0;
         const days = workingDays[month] || 21;
-        const workingHoursPerDay = workingHours[role.id] || 8; // Updated to use 8 as default
+        const workingHoursPerDay = workingHours[role.id] || 8;
         const hours = Math.round(days * workingHoursPerDay * commitment / 100);
         const amount = budget[month]?.breakdown?.[role.id] || 0;
+        const roleType = role.type;
+        const hourlyCost = hourlyCosts[roleType] || 0;
 
-        csvContent += `"${month}";"${role.name}";"${commitment}";"${hourlyRate}";"${workingHoursPerDay}";"${hours}";"${amount}"\n`;
+        csvContent += `"${month}";"${role.name}";"${roleType}";"${commitment}";"${hourlyRate}";"${hourlyCost}";"${workingHoursPerDay}";"${days}";"${hours}";"${amount}"\n`;
       });
     });
 
     return csvContent;
+  };
+
+
+  const handleDownloadCSV = () => {
+    const csvContent = generateCSV(budget, roles, monthOrder, commitments, hourlyRates, workingDays, workingHours, hourlyCosts);
+    downloadCSV(csvContent);
   };
 
   const downloadCSV = (csvContent) => {
