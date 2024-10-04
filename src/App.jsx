@@ -1,10 +1,10 @@
 import './App.css'
-import BudgetCalculator from './components/BudgetCalculator'
+import QuoteCalculator from './components/QuoteCalculator'
 
 function App() {
   return (
     <>
-      <BudgetCalculator/>
+      <QuoteCalculator/>
     </>
   )
 }

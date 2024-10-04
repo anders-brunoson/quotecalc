@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download } from 'lucide-react';
+import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download, Settings } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import CSVUpload from './CSVUpload';
 
-const BudgetCalculator = () => {
+const QuoteCalculator = () => {
   const [months, setMonths] = useState(['jan', 'feb', 'mar',`apr`,'may', 'jun', 'jul',`aug`,'sep', 'oct', 'nov',`dec`]);
   const [roles, setRoles] = useState([
     { id: '1', name: 'Systems Developer BE' },
@@ -42,6 +42,7 @@ const BudgetCalculator = () => {
   const [editingMonth, setEditingMonth] = useState(null);
   const editInputRef = useRef(null);
   const [monthOrder, setMonthOrder] = React.useState([]);
+  const [openRoleSettings, setOpenRoleSettings] = useState(null);  
 
   const handleDataUploaded = (data) => {
     setMonths(data.months);
@@ -468,12 +469,28 @@ const BudgetCalculator = () => {
     const totalHours = Object.values(totalSummary.hours).reduce((sum, hours) => sum + hours, 0);
     const totalAmount = Object.values(totalSummary.breakdown).reduce((sum, amount) => sum + amount, 0);
     return totalHours > 0 ? Math.round(totalAmount / totalHours) : 0;
+  };
+
+  const RoleSettingsModal = ({ role, isOpen, onClose }) => {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Settings for {role.name}</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            {/* We'll add the actual settings here later */}
+            <p>Extra settings for {role.name} will be added here.</p>
+          </DialogDescription>
+        </DialogContent>
+      </Dialog>
+    );
   };  
 
   return (
     <div className={`p-4 w-full ${darkMode ? 'dark' : ''}`}>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Monthly Budget Calculator</h1>
+        <h1 className="text-3xl font-bold">Quote Calculator</h1>
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
@@ -607,14 +624,22 @@ const BudgetCalculator = () => {
                               onChange={(e) => setRoles(prev => prev.map(r => r.id === role.id ? { ...r, name: e.target.value } : r))}
                               className="font-medium flex-grow"
                             />
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              className="ml-2" 
-                              onClick={() => handleRemoveRole(role.id)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="ml-2" 
+                            onClick={() => setOpenRoleSettings(role.id)}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="ml-2" 
+                            onClick={() => handleRemoveRole(role.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                           </div>
                           <div className="flex flex-wrap items-center gap-4 mt-2">
                             <div className="flex-grow min-w-[200px]">
@@ -765,9 +790,18 @@ const BudgetCalculator = () => {
       </div>
 
       <InfoModal />
+
+      {roles.map(role => (
+        <RoleSettingsModal
+          key={role.id}
+          role={role}
+          isOpen={openRoleSettings === role.id}
+          onClose={() => setOpenRoleSettings(null)}
+        />
+      ))}      
       
     </div>
   );
 };
 
-export default BudgetCalculator;
+export default QuoteCalculator;
