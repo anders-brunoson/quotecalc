@@ -25,9 +25,9 @@ const CSVUpload = ({ onDataUploaded }) => {
   });
 
   const processCSVData = (data) => {
-    const validData = data.filter(row => row.month && row.role);
+    const validData = data.filter(row => row.chunk && row.role);
 
-    const months = [...new Set(validData.map(row => row.month))];
+    const chunks = [...new Set(validData.map(row => row.chunk))];
     const roleNames = [...new Set(validData.map(row => row.role))];
     const roles = roleNames.map((name, index) => ({ 
       id: (index + 1).toString(), 
@@ -53,10 +53,10 @@ const CSVUpload = ({ onDataUploaded }) => {
 
     validData.forEach(row => {
       const roleId = roles.find(r => r.name === row.role).id;
-      commitments[roleId][row.month] = parseInt(row.commitmentLevel);
+      commitments[roleId][row.chunk] = parseInt(row.commitmentLevel);
       hourlyRates[roleId] = parseInt(row.hourlyRate);
       workingHours[roleId] = parseFloat(row.workingHoursPerDay);
-      workingDays[row.month] = parseInt(row.workingDays);
+      workingDays[row.chunk] = parseInt(row.workingDays);
       
       // Update hourlyCosts if not already set
       if (hourlyCosts[row.roleType] === 0) {
@@ -64,7 +64,7 @@ const CSVUpload = ({ onDataUploaded }) => {
       }
     });
 
-    return { months, roles, commitments, hourlyRates, workingHours, workingDays, hourlyCosts };
+    return { chunks, roles, commitments, hourlyRates, workingHours, workingDays, hourlyCosts };
   };
 
   return (
