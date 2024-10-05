@@ -4,11 +4,18 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download, Settings } from 'lucide-react';
+import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download, ChevronDown, Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; //remove!
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +24,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import CSVUpload from './CSVUpload';
 
 const QuoteCalculator = () => {
@@ -50,7 +63,8 @@ const QuoteCalculator = () => {
   const [editingChunk, setEditingChunk] = useState(null);
   const editInputRef = useRef(null);
   const [chunkOrder, setChunkOrder] = React.useState([]);
-  const [openRoleSettings, setOpenRoleSettings] = useState(null);  
+  const [openRoleSettings, setOpenRoleSettings] = useState(null);
+  const [openAccordionItems, setOpenAccordionItems] = useState([]);
 
   const handleRoleTypeChange = (roleId, newType) => {
     setRoles(prev => prev.map(role => 
@@ -386,6 +400,28 @@ const handleWorkingDaysChange = (chunk, value) => {
     e.dataTransfer.dropEffect = "move";
   };
 
+    const handleDragStart = (e, index) => {
+    e.stopPropagation();
+    e.dataTransfer.setData('text/plain', index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    if (sourceIndex !== targetIndex) {
+      const newRoles = [...roles];
+      const [removed] = newRoles.splice(sourceIndex, 1);
+      newRoles.splice(targetIndex, 0, removed);
+      setRoles(newRoles);
+    }
+  };
+
   const onDrop = (e, index) => {
     e.preventDefault();
     const data = e.dataTransfer.getData("application/json");
@@ -557,6 +593,14 @@ const handleWorkingDaysChange = (chunk, value) => {
     return totalHours > 0 ? Math.round(totalWeightedRate / totalHours) : 0;
   };
 
+  const handleAccordionToggle = (value) => {
+  setOpenAccordionItems(prev => 
+    prev.includes(value)
+      ? prev.filter(item => item !== value)
+      : [...prev, value]
+  );
+};
+
   const RoleSettingsModal = ({ role, isOpen, onClose }) => {
     const [localHourlyCost, setLocalHourlyCost] = useState(hourlyCosts[role.type]);
 
@@ -634,7 +678,7 @@ const handleWorkingDaysChange = (chunk, value) => {
   return (
     <div className={`p-4 w-full ${darkMode ? 'dark' : ''}`}>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Quote Calculator</h1>
+        <h1 className="text-3xl font-bold">Quote Simulator</h1>
         <div className="flex items-center space-x-2">
           <Button
             variant="ghost"
@@ -730,9 +774,9 @@ const handleWorkingDaysChange = (chunk, value) => {
             </div>
 
             {selectedChunks.length > 0 && (
-            <>
-              {chunks.map(chunk => (
-                <TabsContent key={chunk} value={chunk}>
+              <>
+                {chunks.map(chunk => (
+                  <TabsContent key={chunk} value={chunk}>
                     <div className="mt-8 mb-8 flex justify-between items-center">
                       <label className="block text-sm font-medium">
                         Working days in {capitalize(chunk)} (CHECK MANUALLY!):
@@ -746,80 +790,119 @@ const handleWorkingDaysChange = (chunk, value) => {
                         />
                       </label>
                     </div>
-                    <div className="space-y-4 mb-6">
-                    {roles.map((role, index) => (
-                      <div
-                        key={role.id}
-                        className="p-4 border rounded-lg relative role-card"
-                        onDragOver={(e) => onDragOver(e, index)}
-                        onDrop={(e) => onDrop(e, index)}
-                      >
-                        <div className="flex items-center mb-2">
-                          <div 
-                            className="mr-2 cursor-move drag-handle"
-                            draggable
-                            onDragStart={(e) => onDragStart(e, index)}
-                            onDragEnd={onDragEnd}
-                          >
-                          <GripVertical className="h-5 w-5 text-gray-400" />
-                          <span className="ml-2 text-xs text-gray-500">({role.type})</span>
-                            </div>
-                            <Input
-                              value={role.name}
-                              onChange={(e) => setRoles(prev => prev.map(r => r.id === role.id ? { ...r, name: e.target.value } : r))}
-                              className="font-medium flex-grow"
-                            />
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="ml-2" 
-                            onClick={() => setOpenRoleSettings(role.id)}
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="ml-2" 
-                            onClick={() => handleRemoveRole(role.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                    <Accordion 
+                      type="multiple" 
+                      value={openAccordionItems}
+                      onValueChange={setOpenAccordionItems}
+                      className="space-y-4 mb-6"
+                    >
+                      {roles.map((role, index) => (
+                        <AccordionItem 
+                          key={role.id} 
+                          value={role.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, index)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, index)}
+                        >
+                          <div className="relative">
+                            <AccordionTrigger 
+                              className="hover:no-underline"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleAccordionToggle(role.id);
+                              }}
+                            >
+                              <div className="flex items-center w-full pr-16">
+                                <div className="mr-2 cursor-move">
+                                  <GripVertical className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <Input
+                                  value={role.name}
+                                  onChange={(e) => setRoles(prev => prev.map(r => r.id === role.id ? { ...r, name: e.target.value } : r))}
+                                  className="font-medium flex-grow mr-2"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <Select
+                                  value={role.type}
+                                  onValueChange={(newType) => handleRoleTypeChange(role.id, newType)}
+                                >
+                                  <SelectTrigger className="w-[100px] mr-2" onClick={(e) => e.stopPropagation()}>
+                                    <SelectValue placeholder="Type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Junior">Junior</SelectItem>
+                                    <SelectItem value="Medior">Medior</SelectItem>
+                                    <SelectItem value="Senior">Senior</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <span className="text-sm whitespace-nowrap">
+                                  Commitment: {commitments[role.id]?.[chunk] || 0}%
+                                </span>
+                              </div>
+                            </AccordionTrigger>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="absolute top-1/2 right-10 -translate-y-1/2 h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-transparent"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveRole(role.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <div className="flex flex-wrap items-center gap-4 mt-2">
-                            <div className="flex-grow min-w-[200px]">
-                              <span className="text-sm">Commitment: {commitments[role.id]?.[chunk] || 0}%</span>
-                              <Slider
-                                value={[commitments[role.id]?.[chunk] || 0]}
-                                max={100}
-                                step={1}
-                                onValueChange={(val) => handleCommitmentChange(role.id, chunk, val)}
-                              />
+                          <AccordionContent>
+                            <div className="space-y-4">
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div className="w-32">
+                                  <Label className="text-sm">Hourly Rate</Label>
+                                  <Input
+                                    type="number"
+                                    value={hourlyRates[role.id]?.[chunk] ?? ''}
+                                    onChange={(e) => handleHourlyRateChange(role.id, chunk, e.target.value)}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div className="w-32">
+                                  <Label className="text-sm">Hourly Cost</Label>
+                                  <Input
+                                    type="number"
+                                    value={hourlyCosts[role.type]}
+                                    onChange={(e) => setHourlyCosts(prev => ({
+                                      ...prev,
+                                      [role.type]: Number(e.target.value)
+                                    }))}
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div className="w-32">
+                                  <Label className="text-sm">Hours/Day</Label>
+                                  <Input
+                                    type="number"
+                                    value={workingHours[role.id] ?? 8}
+                                    onChange={(e) => handleWorkingHoursChange(role.id, e.target.value)}
+                                    className="mt-1"
+                                    step="0.5"
+                                    min="0"
+                                  />
+                                </div>
+                                <div className="flex-grow min-w-[200px]">
+                                  <span className="text-sm">Commitment</span>
+                                  <Slider
+                                    value={[commitments[role.id]?.[chunk] || 0]}
+                                    max={100}
+                                    step={1}
+                                    onValueChange={(val) => handleCommitmentChange(role.id, chunk, val)}
+                                  />
+                                </div>
+                              </div>
                             </div>
-                            <div className="w-32">
-                              <span className="text-sm">Hourly Rate</span>
-                              <Input
-                                type="number"
-                                value={hourlyRates[role.id]?.[chunk] ?? ''}
-                                onChange={(e) => handleHourlyRateChange(role.id, chunk, e.target.value)}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div className="w-32">
-                              <span className="text-sm">Hours/Day</span>
-                              <Input
-                                type="number"
-                                value={workingHours[role.id] ?? 8}
-                                onChange={(e) => handleWorkingHoursChange(role.id, e.target.value)}
-                                className="mt-1"
-                                step="0.5"
-                                min="0"
-                              />
-                            </div>
-                          </div>
-                        </div>
+                          </AccordionContent>
+                        </AccordionItem>
                       ))}
-                    </div>
+                    </Accordion>
                   </TabsContent>
                 ))}
               </>
@@ -833,7 +916,7 @@ const handleWorkingDaysChange = (chunk, value) => {
           )}
         </div>
 
-        <div className="xl:w-1/2 space-y-4">
+        <div className="xl:w-3/5 space-y-4">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
@@ -897,10 +980,10 @@ const handleWorkingDaysChange = (chunk, value) => {
             const avgHourlyRate = calculateChunkAverageHourlyRate(period);
             return (
               <Card key={index}>
-                <CardHeader className="capitalize">
+                <CardHeader className="capitalize text-2xl font-bold">
                   <div className="flex justify-between items-center">
                     <span>{period}</span>
-                    <span className="text-2xl font-bold">{total?.toLocaleString()} SEK</span>
+                    <span>{total?.toLocaleString()} SEK</span>
                   </div>
                 </CardHeader>
                 {breakdown && hours && commitments && (
