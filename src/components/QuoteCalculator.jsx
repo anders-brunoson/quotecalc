@@ -184,9 +184,16 @@ const QuoteCalculator = () => {
     });
   };
 
-  const handleWorkingDaysChange = (chunk, value) => {
-    setWorkingDays(prev => ({ ...prev, [chunk]: value === '' ? '' : parseInt(value) || 0 }));
-  };
+const handleWorkingDaysChange = (chunk, value) => {
+  const chunksToUpdate = selectedChunks.length > 0 ? selectedChunks : [chunk];
+  setWorkingDays(prev => {
+    const newWorkingDays = { ...prev };
+    chunksToUpdate.forEach(m => {
+      newWorkingDays[m] = value === '' ? '' : parseInt(value) || 0;
+    });
+    return newWorkingDays;
+  });
+};
 
   const handleWorkingHoursChange = (roleId, value) => {
     const parsedValue = value === '' ? '' : parseFloat(value);
