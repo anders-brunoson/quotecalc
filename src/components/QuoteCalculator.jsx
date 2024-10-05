@@ -20,7 +20,7 @@ import {
 import CSVUpload from './CSVUpload';
 
 const QuoteCalculator = () => {
-  const [chunks, setChunks] = useState(['jan', 'feb', 'mar',`apr`,'may', 'jun', 'jul',`aug`,'sep', 'oct', 'nov',`dec`]);
+  const [chunks, setChunks] = useState(['2025 H1',`2025 H2`]);
   const [roles, setRoles] = useState([
     { id: '1', name: 'Systems Developer BE', type: 'Senior' },
     { id: '2', name: 'Systems Developer FE', type: 'Medior' },
@@ -87,16 +87,23 @@ const QuoteCalculator = () => {
 
   const initializeState = () => {
     const initialCommitments = {};
-    const initialHourlyRates = {};
     const initialWorkingDays = {};
     const initialWorkingHours = {};
+    const initialHourlyRates = {};
+    roles.forEach(role => {
+      initialHourlyRates[role.id] = {};
+      chunks.forEach(chunk => {
+        initialHourlyRates[role.id][chunk] = 1000; // Default hourly rate
+      });
+    });
 
     roles.forEach(role => {
       initialCommitments[role.id] = {};
-      initialHourlyRates[role.id] = 1000;
-      initialWorkingHours[role.id] = 8;  // Set default working hours to 8
+      initialHourlyRates[role.id] = {};
+      initialWorkingHours[role.id] = 8;
       chunks.forEach(chunk => {
         initialCommitments[role.id][chunk] = 50;
+        initialHourlyRates[role.id][chunk] = 1000;
         initialWorkingDays[chunk] = 21;
       });
     });
@@ -104,7 +111,7 @@ const QuoteCalculator = () => {
     setCommitments(initialCommitments);
     setHourlyRates(initialHourlyRates);
     setWorkingDays(initialWorkingDays);
-    setWorkingHours(initialWorkingHours);  // Set the initial working hours
+    setWorkingHours(initialWorkingHours);
     setActiveTab(chunks[0]);
     setChunkOrder(chunks);
   };
@@ -127,7 +134,8 @@ const QuoteCalculator = () => {
         const days = workingDays[chunk] || 0;
         const hoursPerDay = workingHours[role.id] === '' ? 0 : (workingHours[role.id] ?? 8);
         const hours = Math.round(days * hoursPerDay * commitment / 100);
-        const amount = hours * (hourlyRates[role.id] || 0);
+        const hourlyRate = hourlyRates[role.id]?.[chunk] || 0;
+        const amount = hours * hourlyRate;
         newBudget[chunk].breakdown[role.id] = amount;
         newBudget[chunk].hours[role.id] = hours;
         newBudget[chunk].commitments[role.id] = commitment;
@@ -154,6 +162,17 @@ const QuoteCalculator = () => {
     setBudget(newBudget);
   };
 
+  const handleHourlyRateChange = (roleId, chunk, value) => {
+    const chunksToUpdate = selectedChunks.length > 0 ? selectedChunks : [chunk];
+    setHourlyRates(prev => {
+      const newHourlyRates = { ...prev };
+      chunksToUpdate.forEach(m => {
+        newHourlyRates[roleId] = { ...newHourlyRates[roleId], [m]: value === '' ? '' : parseInt(value) || 0 };
+      });
+      return newHourlyRates;
+    });
+  };
+
   const handleCommitmentChange = (roleId, chunk, value) => {
     const chunksToUpdate = selectedChunks.length > 0 ? selectedChunks : [chunk];
     setCommitments(prev => {
@@ -163,10 +182,6 @@ const QuoteCalculator = () => {
       });
       return newCommitments;
     });
-  };
-
-  const handleHourlyRateChange = (roleId, value) => {
-    setHourlyRates(prev => ({ ...prev, [roleId]: value === '' ? '' : parseInt(value) || 0 }));
   };
 
   const handleWorkingDaysChange = (chunk, value) => {
@@ -185,7 +200,10 @@ const QuoteCalculator = () => {
       ...prev,
       [newId]: chunks.reduce((acc, chunk) => ({ ...acc, [chunk]: 50 }), {})
     }));
-    setHourlyRates(prev => ({ ...prev, [newId]: 1000 }));
+    setHourlyRates(prev => ({
+      ...prev,
+      [newId]: chunks.reduce((acc, chunk) => ({ ...acc, [chunk]: 1000 }), {}) // Default hourly rate for new role
+    }));
     setWorkingHours(prev => ({ ...prev, [newId]: 8 }));
   };
 
@@ -221,6 +239,13 @@ const QuoteCalculator = () => {
           newCommitments[roleId][chunkToAdd] = 50;
         });
         return newCommitments;
+      });
+      setHourlyRates(prev => {
+        const newHourlyRates = { ...prev };
+        Object.keys(newHourlyRates).forEach(roleId => {
+          newHourlyRates[roleId][chunkToAdd] = 1000; // Default hourly rate
+        });
+        return newHourlyRates;
       });
       setNewChunkName('');
       setIsAddingChunk(false);
@@ -305,15 +330,19 @@ const QuoteCalculator = () => {
         });
         return newCommitments;
       });
+      setHourlyRates(prev => {
+        const newHourlyRates = { ...prev };
+        Object.keys(newHourlyRates).forEach(roleId => {
+          const { [oldName]: value, ...rest } = newHourlyRates[roleId];
+          newHourlyRates[roleId] = { ...rest, [lowerNewName]: value || 1000 }; // Use existing value or default
+        });
+        return newHourlyRates;
+      });
       setEditingChunk(null);
       
-      // Set the active tab to the newly renamed chunk
       setActiveTab(lowerNewName);
-      
-      // Update selected chunks if the renamed chunk was selected
       setSelectedChunks(prev => prev.map(m => m === oldName ? lowerNewName : m));
 
-      // Force a re-render to ensure the tab becomes active
       setTimeout(() => {
         setActiveTab(lowerNewName);
       }, 0);
@@ -413,7 +442,7 @@ const QuoteCalculator = () => {
     chunks.forEach(chunk => {
       roles.forEach(role => {
         const commitment = commitments[role.id]?.[chunk] || 0;
-        const hourlyRate = hourlyRates[role.id] || 0;
+        const hourlyRate = hourlyRates[role.id]?.[chunk] || 0;
         const days = workingDays[chunk] || 21;
         const workingHoursPerDay = workingHours[role.id] || 8;
         const hours = Math.round(days * workingHoursPerDay * commitment / 100);
@@ -427,7 +456,6 @@ const QuoteCalculator = () => {
 
     return csvContent;
   };
-
 
   const handleDownloadCSV = () => {
     const csvContent = generateCSV(budget, roles, chunkOrder, commitments, hourlyRates, workingDays, workingHours, hourlyCosts);
@@ -492,10 +520,34 @@ const QuoteCalculator = () => {
     return totalSummary;
   };
 
-  const calculateAverageHourlyRate = (totalSummary) => {
-    const totalHours = Object.values(totalSummary.hours).reduce((sum, hours) => sum + hours, 0);
-    const totalAmount = Object.values(totalSummary.breakdown).reduce((sum, amount) => sum + amount, 0);
-    return totalHours > 0 ? Math.round(totalAmount / totalHours) : 0;
+  const calculateAverageHourlyRate = (roleId) => {
+    const rates = chunks.map(chunk => hourlyRates[roleId]?.[chunk] || 0);
+    const sum = rates.reduce((a, b) => a + b, 0);
+    return Math.round(sum / chunks.length);
+  };
+
+  const calculateOverallAverageHourlyRate = () => {
+    let totalRate = 0;
+    let totalHours = 0;
+    roles.forEach(role => {
+      chunks.forEach(chunk => {
+        const hours = budget[chunk]?.hours[role.id] || 0;
+        totalRate += hours * (hourlyRates[role.id]?.[chunk] || 0);
+        totalHours += hours;
+      });
+    });
+    return totalHours > 0 ? Math.round(totalRate / totalHours) : 0;
+  };
+
+  const calculateChunkAverageHourlyRate = (chunk) => {
+    let totalWeightedRate = 0;
+    let totalHours = 0;
+    roles.forEach(role => {
+      const hours = budget[chunk]?.hours[role.id] || 0;
+      totalWeightedRate += hours * (hourlyRates[role.id]?.[chunk] || 0);
+      totalHours += hours;
+    });
+    return totalHours > 0 ? Math.round(totalWeightedRate / totalHours) : 0;
   };
 
   const RoleSettingsModal = ({ role, isOpen, onClose }) => {
@@ -741,8 +793,8 @@ const QuoteCalculator = () => {
                               <span className="text-sm">Hourly Rate</span>
                               <Input
                                 type="number"
-                                value={hourlyRates[role.id] ?? ''}
-                                onChange={(e) => handleHourlyRateChange(role.id, e.target.value)}
+                                value={hourlyRates[role.id]?.[chunk] ?? ''}
+                                onChange={(e) => handleHourlyRateChange(role.id, chunk, e.target.value)}
                                 className="mt-1"
                               />
                             </div>
@@ -788,19 +840,20 @@ const QuoteCalculator = () => {
                   <span className="col-span-1 text-left">Role</span>
                   <span className="text-right">Avg. Commitment</span>
                   <span className="text-right">Total Hours</span>
-                  <span className="text-right">Hourly Rate</span>
+                  <span className="text-right">Avg. Hourly Rate</span>
                   <span className="text-right">Total Amount</span>
                   <span className="text-right">Gross Margin</span>
                   <span className="text-right">GM %</span>
                 </div>
                 {roles.map(role => {
                   const totalSummary = calculateTotalSummary();
+                  const avgHourlyRate = calculateAverageHourlyRate(role.id);
                   return (
                     <div key={role.id} className="grid grid-cols-7">
                       <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
                       <span className="text-right">{totalSummary.commitments[role.id] || 0}%</span>
                       <span className="text-right">{totalSummary.hours[role.id] || 0}</span>
-                      <span className="text-right">{totalSummary.hourlyRates[role.id] || 0} SEK</span>
+                      <span className="text-right">{avgHourlyRate} SEK</span>
                       <span className="text-right">{(totalSummary.breakdown[role.id] || 0).toLocaleString()} SEK</span>
                       <span className="text-right">{(totalSummary.grossMargin[role.id] || 0).toLocaleString()} SEK</span>
                       <span className="text-right">{totalSummary.grossMarginPercentage[role.id].toFixed(0)}%</span>
@@ -816,7 +869,7 @@ const QuoteCalculator = () => {
                     {Object.values(calculateTotalSummary().hours).reduce((sum, value) => sum + (value || 0), 0)}
                   </span>
                   <span className="text-right">
-                    {calculateAverageHourlyRate(calculateTotalSummary())} SEK
+                    {calculateOverallAverageHourlyRate()} SEK
                   </span>
                   <span className="text-right">
                     {calculateTotalSummary().total.toLocaleString()} SEK
@@ -834,6 +887,7 @@ const QuoteCalculator = () => {
 
           {chunkOrder.map((period, index) => {
             const { total, breakdown, hours, commitments } = budget[period] || {};
+            const avgHourlyRate = calculateChunkAverageHourlyRate(period);
             return (
               <Card key={index}>
                 <CardHeader className="capitalize">
@@ -864,7 +918,7 @@ const QuoteCalculator = () => {
                             <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
                             <span className="text-right">{commitments[role.id] || 0}%</span>
                             <span className="text-right">{hours[role.id] || 0}</span>
-                            <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
+                            <span className="text-right">{hourlyRates[role.id]?.[period] || 0} SEK</span>
                             <span className="text-right">{(breakdown[role.id] || 0).toLocaleString()} SEK</span>
                             <span className="text-right">{grossMargin.toLocaleString()} SEK</span>
                             <span className="text-right">{grossMarginPercentage.toFixed(0)}%</span>
@@ -880,7 +934,7 @@ const QuoteCalculator = () => {
                           {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0)}
                         </span>
                         <span className="text-right">
-                          {calculateAverageHourlyRate({ hours, breakdown })} SEK
+                          {avgHourlyRate} SEK
                         </span>
                         <span className="text-right">
                           {Object.values(breakdown).reduce((sum, value) => sum + (value || 0), 0).toLocaleString()} SEK
