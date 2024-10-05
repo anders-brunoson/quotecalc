@@ -47,14 +47,14 @@ const CSVUpload = ({ onDataUploaded }) => {
 
     roles.forEach(role => {
       commitments[role.id] = {};
-      hourlyRates[role.id] = 0;
+      hourlyRates[role.id] = {};
       workingHours[role.id] = 0;
     });
 
     validData.forEach(row => {
       const roleId = roles.find(r => r.name === row.role).id;
       commitments[roleId][row.chunk] = parseInt(row.commitmentLevel);
-      hourlyRates[roleId] = parseInt(row.hourlyRate);
+      hourlyRates[roleId][row.chunk] = parseInt(row.hourlyRate);
       workingHours[roleId] = parseFloat(row.workingHoursPerDay);
       workingDays[row.chunk] = parseInt(row.workingDays);
       
