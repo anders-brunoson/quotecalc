@@ -41,6 +41,13 @@ const QuoteCalculator = () => {
     { id: '4', name: 'Digital Designer', type: 'Senior' },
     { id: '5', name: 'Project Manager', type: 'Senior' }
   ]);
+  const [availableRoles, setAvailableRoles] = useState([
+    { id: 'role1', name: 'Systems Developer BE', type: 'Senior' },
+    { id: 'role2', name: 'Systems Developer FE', type: 'Medior' },
+    { id: 'role3', name: 'UX Designer', type: 'Junior' },
+    { id: 'role4', name: 'Digital Designer', type: 'Senior' },
+    { id: 'role5', name: 'Project Manager', type: 'Senior' },
+  ]);
 
   const [hourlyCosts, setHourlyCosts] = useState({
     Junior: 500,
@@ -65,12 +72,6 @@ const QuoteCalculator = () => {
   const [chunkOrder, setChunkOrder] = React.useState([]);
   const [openRoleSettings, setOpenRoleSettings] = useState(null);
   const [openAccordionItems, setOpenAccordionItems] = useState([]);
-
-  const handleRoleTypeChange = (roleId, newType) => {
-    setRoles(prev => prev.map(role => 
-      role.id === roleId ? { ...role, type: newType } : role
-    ));
-  };
 
   const handleDataUploaded = (data) => {
     setChunks(data.chunks);
@@ -593,13 +594,28 @@ const handleWorkingDaysChange = (chunk, value) => {
     return totalHours > 0 ? Math.round(totalWeightedRate / totalHours) : 0;
   };
 
+  const handleRoleSwitch = (oldRoleId, newRoleName) => {
+    const newRole = availableRoles.find(role => role.name === newRoleName);
+    if (!newRole) return;
+
+    setRoles(prevRoles => prevRoles.map(role => 
+      role.id === oldRoleId ? { ...role, name: newRole.name, type: newRole.type } : role
+    ));
+  };
+
   const handleAccordionToggle = (value) => {
-  setOpenAccordionItems(prev => 
-    prev.includes(value)
-      ? prev.filter(item => item !== value)
-      : [...prev, value]
-  );
-};
+    setOpenAccordionItems(prev => 
+      prev.includes(value)
+        ? prev.filter(item => item !== value)
+        : [...prev, value]
+    );
+  };
+
+  const handleRoleTypeChange = (roleId, newType) => {
+    setRoles(prev => prev.map(role => 
+      role.id === roleId ? { ...role, type: newType } : role
+    ));
+  };
 
   const RoleSettingsModal = ({ role, isOpen, onClose }) => {
     const [localHourlyCost, setLocalHourlyCost] = useState(hourlyCosts[role.type]);
@@ -809,25 +825,41 @@ const handleWorkingDaysChange = (chunk, value) => {
                             <AccordionTrigger 
                               className="hover:no-underline"
                               onClick={(e) => {
-                                e.preventDefault();
-                                handleAccordionToggle(role.id);
+                                // Only toggle if not interacting with Select components
+                                if (!e.target.closest('.select-component')) {
+                                  handleAccordionToggle(role.id);
+                                }
                               }}
                             >
                               <div className="flex items-center w-full pr-16">
                                 <div className="mr-2 cursor-move">
                                   <GripVertical className="h-5 w-5 text-gray-400" />
                                 </div>
-                                <Input
+                                <Select
                                   value={role.name}
-                                  onChange={(e) => setRoles(prev => prev.map(r => r.id === role.id ? { ...r, name: e.target.value } : r))}
-                                  className="font-medium flex-grow mr-2"
-                                  onClick={(e) => e.stopPropagation()}
-                                />
+                                  onValueChange={(newRoleName) => handleRoleSwitch(role.id, newRoleName)}
+                                  className="select-component"
+                                >
+                                  <SelectTrigger className="w-[200px] mr-2">
+                                    <SelectValue placeholder={role.name} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableRoles.map((availableRole) => (
+                                      <SelectItem 
+                                        key={availableRole.id} 
+                                        value={availableRole.name}
+                                      >
+                                        {availableRole.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <Select
                                   value={role.type}
                                   onValueChange={(newType) => handleRoleTypeChange(role.id, newType)}
+                                  className="select-component"
                                 >
-                                  <SelectTrigger className="w-[100px] mr-2" onClick={(e) => e.stopPropagation()}>
+                                  <SelectTrigger className="w-[100px] mr-2">
                                     <SelectValue placeholder="Type" />
                                   </SelectTrigger>
                                   <SelectContent>
