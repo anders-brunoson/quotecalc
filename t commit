@@ -1,0 +1,83 @@
+[33mcommit 515ecf27c0ab60ddfae5b70a23f8679fde930daf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/refactor-out-roletype[m[33m, [m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Mon Oct 7 07:39:38 2024 +0200
+
+    Rate card upload
+
+[33mcommit b10426fb446ba06d3ffb3a26e6ad914204250054[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Sun Oct 6 23:49:59 2024 +0200
+
+    Role selector dropdown
+
+[33mcommit 4f85314ad21428cf584e96353f292cb51db0f745[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Sat Oct 5 18:16:50 2024 +0200
+
+    Role cards -> accordions
+
+[33mcommit f93a7b6b6be82203b21fa934cde553b62b00df7d[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Sat Oct 5 14:33:15 2024 +0200
+
+    Set working days for all selected chunks
+
+[33mcommit f1d18b4716df3c1122ee05462851c678b5716eaf[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Sat Oct 5 14:27:37 2024 +0200
+
+    Fixed CSV upload broken hourly rates
+
+[33mcommit b5e010d16ba6a22cf064832c2c0560dcbd0f795c[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Sat Oct 5 12:42:36 2024 +0200
+
+    Chunk specific role Hourly Rate
+
+[33mcommit b4ad8751ca0bae977b553b40ae1681fd95860d44[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Sat Oct 5 09:27:04 2024 +0200
+
+    Renamed month -> chunk
+
+[33mcommit ad67c863695833482fe659d40135835aab08bd14[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Fri Oct 4 23:07:10 2024 +0200
+
+    Added GM% column
+
+[33mcommit 544c0d0fb38c51a2a51694260516e2f778f7b9a1[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Fri Oct 4 21:26:51 2024 +0200
+
+    CSV download/upload handle roleTypes
+
+[33mcommit 9859329230e50329a8cfc79815c6222f41b5a831[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Fri Oct 4 21:03:02 2024 +0200
+
+    Role type cost
+
+[33mcommit af116301e0d0a97966f76d20f8f0e2538d77869b[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Fri Oct 4 12:40:54 2024 +0200
+
+    Role types added
+
+[33mcommit 2fd5eb2416bbf6c0501cf67542412958aca027a2[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Fri Oct 4 09:15:10 2024 +0200
+
+    Role card settings modal
+
+[33mcommit 5a0e9dd8c7be3706ab02b26ea54982095a23d35d[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Fri Oct 4 08:18:56 2024 +0200
+
+    Repo loading
+
+[33mcommit 1a673495ab6a62eb7b8da7932c5bebafdf96c2c8[m
+Author: Anders Brunoson <anders.brunoson@stendahls.se>
+Date:   Fri Oct 4 08:15:54 2024 +0200
+
+    first commit
