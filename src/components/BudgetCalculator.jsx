@@ -15,6 +15,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import CSVUpload from './CSVUpload';
 
 
@@ -44,6 +51,16 @@ const QuoteCalculator = () => {
   const [editingChunk, setEditingChunk] = useState(null);
   const editInputRef = useRef(null);
   const [chunkOrder, setChunkOrder] = React.useState([]);
+  const [predefinedRoles, setPredefinedRoles] = useState([
+    { name: 'Systems Developer BE', hourlyRate: 1200, hourlyCost: 800 },
+    { name: 'Systems Developer FE', hourlyRate: 1100, hourlyCost: 750 },
+    { name: 'UX Designer', hourlyRate: 1000, hourlyCost: 700 },
+    { name: 'Digital Designer', hourlyRate: 950, hourlyCost: 650 },
+    { name: 'Project Manager', hourlyRate: 1300, hourlyCost: 900 },
+    { name: 'DevOps Engineer', hourlyRate: 1250, hourlyCost: 850 },
+    { name: 'Data Scientist', hourlyRate: 1400, hourlyCost: 950 },
+    { name: 'QA Engineer', hourlyRate: 1000, hourlyCost: 700 },
+  ]);
 
   const handleDataUploaded = (data) => {
     setChunks(data.chunks);
@@ -185,7 +202,16 @@ const QuoteCalculator = () => {
   };
 
   const handleHourlyCostChange = (roleId, value) => {
-    setHourlyCosts(prev => ({ ...prev, [roleId]: value === '' ? '' : parseInt(value) || 0 }));
+    const newValue = value === '' ? '' : parseInt(value) || 0;
+    setHourlyCosts(prev => ({ ...prev, [roleId]: newValue }));
+    
+    // Update the predefined role if it matches
+    const updatedRole = roles.find(r => r.id === roleId);
+    if (updatedRole) {
+      setPredefinedRoles(prev => 
+        prev.map(r => r.name === updatedRole.name ? { ...r, hourlyCost: newValue } : r)
+      );
+    }
   };
 
   const handleCommitmentChange = (roleId, chunk, value) => {
@@ -200,7 +226,16 @@ const QuoteCalculator = () => {
   };
 
   const handleHourlyRateChange = (roleId, value) => {
-    setHourlyRates(prev => ({ ...prev, [roleId]: value === '' ? '' : parseInt(value) || 0 }));
+    const newValue = value === '' ? '' : parseInt(value) || 0;
+    setHourlyRates(prev => ({ ...prev, [roleId]: newValue }));
+    
+    // Update the predefined role if it matches
+    const updatedRole = roles.find(r => r.id === roleId);
+    if (updatedRole) {
+      setPredefinedRoles(prev => 
+        prev.map(r => r.name === updatedRole.name ? { ...r, hourlyRate: newValue } : r)
+      );
+    }
   };
 
 const handleWorkingDaysChange = (chunk, value) => {
@@ -221,12 +256,14 @@ const handleWorkingDaysChange = (chunk, value) => {
 
   const handleAddRole = () => {
     const newId = (roles.length + 1).toString();
-    setRoles(prev => [...prev, { id: newId, name: `New Role ${newId}` }]);
+    const defaultRole = predefinedRoles[0]; // Use the first predefined role as default
+    setRoles(prev => [...prev, { id: newId, name: defaultRole.name }]);
     setCommitments(prev => ({
       ...prev,
       [newId]: chunks.reduce((acc, chunk) => ({ ...acc, [chunk]: 50 }), {})
     }));
-    setHourlyRates(prev => ({ ...prev, [newId]: 1000 }));
+    setHourlyRates(prev => ({ ...prev, [newId]: defaultRole.hourlyRate }));
+    setHourlyCosts(prev => ({ ...prev, [newId]: defaultRole.hourlyCost }));
     setWorkingHours(prev => ({ ...prev, [newId]: 8 }));
   };
 
@@ -244,6 +281,13 @@ const handleWorkingDaysChange = (chunk, value) => {
       const { [idToRemove]: _, ...rest } = prev;
       return rest;
     });
+  };
+
+  const handleRoleChange = (roleId, newRoleName) => {
+    const selectedRole = predefinedRoles.find(role => role.name === newRoleName);
+    setRoles(prev => prev.map(r => r.id === roleId ? { ...r, name: newRoleName } : r));
+    setHourlyRates(prev => ({ ...prev, [roleId]: selectedRole.hourlyRate }));
+    setHourlyCosts(prev => ({ ...prev, [roleId]: selectedRole.hourlyCost }));
   };
 
   const handleAddChunk = () => {
@@ -629,7 +673,7 @@ const handleWorkingDaysChange = (chunk, value) => {
                         />
                       </label>
                     </div>
-                    <div className="space-y-4 mb-6">
+                  <div className="space-y-4 mb-6">
                     {roles.map((role, index) => (
                       <div
                         key={role.id}
@@ -637,30 +681,40 @@ const handleWorkingDaysChange = (chunk, value) => {
                         onDragOver={(e) => onDragOver(e, index)}
                         onDrop={(e) => onDrop(e, index)}
                       >
-                          <div className="flex items-center mb-2">
-                            <div 
-                              className="mr-2 cursor-move drag-handle"
-                              draggable
-                              onDragStart={(e) => onDragStart(e, index)}
-                              onDragEnd={onDragEnd}
-                            >
-                              <GripVertical className="h-5 w-5 text-gray-400" />
-                            </div>
-                            <Input
-                              value={role.name}
-                              onChange={(e) => setRoles(prev => prev.map(r => r.id === role.id ? { ...r, name: e.target.value } : r))}
-                              className="font-medium flex-grow"
-                            />
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              className="ml-2" 
-                              onClick={() => handleRemoveRole(role.id)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                        <div className="flex items-center mb-2">
+                          <div 
+                            className="mr-2 cursor-move drag-handle"
+                            draggable
+                            onDragStart={(e) => onDragStart(e, index)}
+                            onDragEnd={onDragEnd}
+                          >
+                            <GripVertical className="h-5 w-5 text-gray-400" />
                           </div>
-                          <div className="flex flex-wrap items-center gap-4 mt-2">
+                          <Select
+                            value={role.name}
+                            onValueChange={(value) => handleRoleChange(role.id, value)}
+                          >
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {predefinedRoles.map((predefinedRole) => (
+                                <SelectItem key={predefinedRole.name} value={predefinedRole.name}>
+                                  {predefinedRole.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="ml-2" 
+                            onClick={() => handleRemoveRole(role.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4 mt-2">
                           <div className="flex-grow min-w-[200px]">
                             <span className="text-sm">Commitment: {commitments[role.id]?.[chunk] || 0}%</span>
                             <Slider
