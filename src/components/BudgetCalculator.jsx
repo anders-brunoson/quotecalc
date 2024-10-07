@@ -23,11 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import CSVUpload from './CSVUpload';
+import RateCardCSVUpload from './RateCardCSVUpload';
 
 
 const QuoteCalculator = () => {
   const [chunks, setChunks] = useState(['2025 H1', '2025 H2']);
   const [commitments, setCommitments] = useState({});
+  const [rateCardName, setRateCardName] = useState('');  
   const [hourlyRates, setHourlyRates] = useState({});
   const [hourlyCosts, setHourlyCosts] = useState({});
   const [workingDays, setWorkingDays] = useState({});
@@ -43,6 +45,7 @@ const QuoteCalculator = () => {
   const [editingChunk, setEditingChunk] = useState(null);
   const editInputRef = useRef(null);
   const [chunkOrder, setChunkOrder] = React.useState([]);
+  const [selectorKey, setSelectorKey] = useState(0);
 
   const [roles, setRoles] = useState([
     { id: '1', name: 'Systems Developer BE', code: '302' },
@@ -62,6 +65,59 @@ const QuoteCalculator = () => {
     { name: 'Data Scientist', hourlyRate: 1400, hourlyCost: 950, code: '306' },
     { name: 'QA Engineer', hourlyRate: 1000, hourlyCost: 700, code: '303' },
   ]);
+
+  const sortedPredefinedRoles = React.useMemo(() => {
+    return [...predefinedRoles].sort((a, b) => a.name.localeCompare(b.name));
+  }, [predefinedRoles]);
+
+  useEffect(() => {
+    console.log("QuoteCalculator component loaded");
+  }, []);
+
+  const handleRateCardUploaded = (data) => {
+    console.log("Rate card uploaded, received data:", data);
+    
+    if (!data || !data.roles || !Array.isArray(data.roles)) {
+      console.error("Invalid rate card data:", data);
+      return;
+    }
+
+    setRateCardName(data.rateCardName);
+    
+    const newPredefinedRoles = data.roles.map(role => {
+      console.log("Processing role:", role);
+      return {
+        name: role.RoleName,
+        hourlyRate: parseInt(role.HourlyRate),
+        hourlyCost: parseInt(role.HourlyCost),
+        code: role.RoleCode
+      };
+    });
+
+    console.log("Setting new predefined roles:", newPredefinedRoles);
+    setPredefinedRoles(newPredefinedRoles);
+    setSelectorKey(prevKey => prevKey + 1);
+
+    // Update existing roles with new rates and costs if they match
+    setRoles(prevRoles => {
+      const updatedRoles = prevRoles.map(role => {
+        const matchingNewRole = newPredefinedRoles.find(newRole => newRole.name === role.name);
+        if (matchingNewRole) {
+          console.log(`Updating existing role: ${role.name}`);
+          setHourlyRates(prev => ({ ...prev, [role.id]: matchingNewRole.hourlyRate }));
+          setHourlyCosts(prev => ({ ...prev, [role.id]: matchingNewRole.hourlyCost }));
+          return { ...role, code: matchingNewRole.code };
+        }
+        return role;
+      });
+      console.log("Updated roles:", updatedRoles);
+      return updatedRoles;
+    });
+  };
+
+  useEffect(() => {
+    console.log("predefinedRoles updated:", predefinedRoles);
+  }, [predefinedRoles]);
 
   const handleDataUploaded = (data) => {
     setChunks(data.chunks);
@@ -239,26 +295,30 @@ const QuoteCalculator = () => {
     }
   };
 
-const handleWorkingDaysChange = (chunk, value) => {
-  const chunksToUpdate = selectedChunks.length > 0 ? selectedChunks : [chunk];
-  setWorkingDays(prev => {
-    const newWorkingDays = { ...prev };
-    chunksToUpdate.forEach(m => {
-      newWorkingDays[m] = value === '' ? '' : parseInt(value) || 0;
+  const handleWorkingDaysChange = (chunk, value) => {
+    const chunksToUpdate = selectedChunks.length > 0 ? selectedChunks : [chunk];
+    setWorkingDays(prev => {
+      const newWorkingDays = { ...prev };
+      chunksToUpdate.forEach(m => {
+        newWorkingDays[m] = value === '' ? '' : parseInt(value) || 0;
+      });
+      return newWorkingDays;
     });
-    return newWorkingDays;
-  });
-};
+  };
 
   const handleWorkingHoursChange = (roleId, value) => {
     const parsedValue = value === '' ? '' : parseFloat(value);
     setWorkingHours(prev => ({ ...prev, [roleId]: parsedValue }));
   };
 
- const handleAddRole = () => {
+  const handleAddRole = () => {
     const newId = (roles.length + 1).toString();
     const defaultRole = predefinedRoles[0]; // Use the first predefined role as default
-    setRoles(prev => [...prev, { id: newId, name: defaultRole.name, code: defaultRole.code }]);
+    setRoles(prev => [...prev, { 
+      id: newId, 
+      name: defaultRole.name,
+      code: defaultRole.code 
+    }]);
     setCommitments(prev => ({
       ...prev,
       [newId]: chunks.reduce((acc, chunk) => ({ ...acc, [chunk]: 50 }), {})
@@ -601,7 +661,14 @@ const handleWorkingDaysChange = (chunk, value) => {
           <Download className="mr-2 h-4 w-4" /> Download CSV
         </Button>
         <CSVUpload onDataUploaded={handleDataUploaded} />
+        <RateCardCSVUpload onRateCardUploaded={handleRateCardUploaded} />
       </div>
+
+      {rateCardName && (
+        <div className="mb-4">
+          <h2 className="text-xl font-bold">Current Rate Card: {rateCardName}</h2>
+        </div>
+      )}      
 
       {isAddingChunk && (
         <div className="mb-4 flex space-x-2">
@@ -677,7 +744,7 @@ const handleWorkingDaysChange = (chunk, value) => {
                   <div className="space-y-4 mb-6">
                     {roles.map((role, index) => (
                       <div
-                        key={role.id}
+                        key={`${role.id}-${selectorKey}`}
                         className="p-4 border rounded-lg relative role-card"
                         onDragOver={(e) => onDragOver(e, index)}
                         onDrop={(e) => onDrop(e, index)}
@@ -692,16 +759,17 @@ const handleWorkingDaysChange = (chunk, value) => {
                             <GripVertical className="h-5 w-5 text-gray-400" />
                           </div>
                           <Select
+                            key={`${selectorKey}-${role.id}`}
                             value={role.name}
                             onValueChange={(value) => handleRoleChange(role.id, value)}
                           >
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-[270px]"> {/* Increased width by 50% */}
                               <SelectValue placeholder="Select a role" />
                             </SelectTrigger>
                             <SelectContent>
-                              {predefinedRoles.map((predefinedRole) => (
-                                <SelectItem key={predefinedRole.name} value={predefinedRole.name}>
-                                  {predefinedRole.name}
+                              {sortedPredefinedRoles.map((predefinedRole) => (
+                                <SelectItem key={`${predefinedRole.name}-${predefinedRole.code}`} value={predefinedRole.name}>
+                                  {predefinedRole.name} ({predefinedRole.code})
                                 </SelectItem>
                               ))}
                             </SelectContent>
