@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download } from 'lucide-react';
+import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download, Upload } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import CSVUpload from './CSVUpload';
 import RateCardCSVUpload from './RateCardCSVUpload';
-
+import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
 
 const QuoteCalculator = () => {
   const [chunks, setChunks] = useState(['2025 H1', '2025 H2']);
@@ -65,6 +65,60 @@ const QuoteCalculator = () => {
     { name: 'Data Scientist', hourlyRate: 1400, hourlyCost: 950, code: '306' },
     { name: 'QA Engineer', hourlyRate: 1000, hourlyCost: 700, code: '303' },
   ]);
+
+  const handleExportJSON = () => {
+    const stateToExport = {
+      chunks,
+      roles,
+      commitments,
+      hourlyRates,
+      hourlyCosts,
+      workingDays,
+      workingHours,
+      rateCardName,
+      predefinedRoles,
+      chunkOrder
+    };
+    const jsonData = exportStateToJSON(stateToExport);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'budget_calculator_state.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportJSON = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedState = importStateFromJSON(e.target.result);
+          setChunks(importedState.chunks);
+          setRoles(importedState.roles);
+          setCommitments(importedState.commitments);
+          setHourlyRates(importedState.hourlyRates);
+          setHourlyCosts(importedState.hourlyCosts);
+          setWorkingDays(importedState.workingDays);
+          setWorkingHours(importedState.workingHours);
+          setRateCardName(importedState.rateCardName);
+          setPredefinedRoles(importedState.predefinedRoles);
+          setChunkOrder(importedState.chunkOrder);
+          setActiveTab(importedState.chunks[0]);
+          setSelectedChunks([]);
+          // Force re-render of role selectors
+          setSelectorKey(prevKey => prevKey + 1);
+        } catch (error) {
+          console.error('Error importing JSON:', error);
+          // You might want to show an error message to the user here
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
 
   const sortedPredefinedRoles = React.useMemo(() => {
     return [...predefinedRoles].sort((a, b) => a.name.localeCompare(b.name));
@@ -657,11 +711,26 @@ const QuoteCalculator = () => {
         >
           <X className="mr-2 h-4 w-4" /> Remove Chunk(s)
         </Button>
+{/*
         <Button onClick={handleDownloadCSV} className="flex items-center">
           <Download className="mr-2 h-4 w-4" /> Download CSV
         </Button>
         <CSVUpload onDataUploaded={handleDataUploaded} />
+*/}        
         <RateCardCSVUpload onRateCardUploaded={handleRateCardUploaded} />
+        <Button onClick={handleExportJSON} className="flex items-center">
+          <Download className="mr-2 h-4 w-4" /> Export JSON
+        </Button>
+        <Button onClick={() => document.getElementById('import-json').click()} className="flex items-center">
+          <Upload className="mr-2 h-4 w-4" /> Import JSON
+        </Button>
+        <input
+          id="import-json"
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          onChange={handleImportJSON}
+        />            
       </div>
 
       {rateCardName && (
