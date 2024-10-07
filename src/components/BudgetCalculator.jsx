@@ -27,14 +27,6 @@ import CSVUpload from './CSVUpload';
 
 const QuoteCalculator = () => {
   const [chunks, setChunks] = useState(['2025 H1', '2025 H2']);
-  const [roles, setRoles] = useState([
-    { id: '1', name: 'Systems Developer BE' },
-    { id: '2', name: 'Systems Developer FE' },
-    { id: '3', name: 'UX Designer' },
-    { id: '4', name: 'Digital Designer' },
-    { id: '5', name: 'Project Manager' }
-  ]);
-
   const [commitments, setCommitments] = useState({});
   const [hourlyRates, setHourlyRates] = useState({});
   const [hourlyCosts, setHourlyCosts] = useState({});
@@ -51,15 +43,24 @@ const QuoteCalculator = () => {
   const [editingChunk, setEditingChunk] = useState(null);
   const editInputRef = useRef(null);
   const [chunkOrder, setChunkOrder] = React.useState([]);
+
+  const [roles, setRoles] = useState([
+    { id: '1', name: 'Systems Developer BE', code: '302' },
+    { id: '2', name: 'Systems Developer FE', code: '302' },
+    { id: '3', name: 'UX Designer', code: '200' },
+    { id: '4', name: 'Digital Designer', code: '200' },
+    { id: '5', name: 'Project Manager', code: '030' }
+  ]);
+
   const [predefinedRoles, setPredefinedRoles] = useState([
-    { name: 'Systems Developer BE', hourlyRate: 1200, hourlyCost: 800 },
-    { name: 'Systems Developer FE', hourlyRate: 1100, hourlyCost: 750 },
-    { name: 'UX Designer', hourlyRate: 1000, hourlyCost: 700 },
-    { name: 'Digital Designer', hourlyRate: 950, hourlyCost: 650 },
-    { name: 'Project Manager', hourlyRate: 1300, hourlyCost: 900 },
-    { name: 'DevOps Engineer', hourlyRate: 1250, hourlyCost: 850 },
-    { name: 'Data Scientist', hourlyRate: 1400, hourlyCost: 950 },
-    { name: 'QA Engineer', hourlyRate: 1000, hourlyCost: 700 },
+    { name: 'Systems Developer BE', hourlyRate: 1200, hourlyCost: 800, code: '302' },
+    { name: 'Systems Developer FE', hourlyRate: 1100, hourlyCost: 750, code: '302' },
+    { name: 'UX Designer', hourlyRate: 1000, hourlyCost: 700, code: '200' },
+    { name: 'Digital Designer', hourlyRate: 950, hourlyCost: 650, code: '200' },
+    { name: 'Project Manager', hourlyRate: 1300, hourlyCost: 900, code: '030' },
+    { name: 'DevOps Engineer', hourlyRate: 1250, hourlyCost: 850, code: '400' },
+    { name: 'Data Scientist', hourlyRate: 1400, hourlyCost: 950, code: '306' },
+    { name: 'QA Engineer', hourlyRate: 1000, hourlyCost: 700, code: '303' },
   ]);
 
   const handleDataUploaded = (data) => {
@@ -254,10 +255,10 @@ const handleWorkingDaysChange = (chunk, value) => {
     setWorkingHours(prev => ({ ...prev, [roleId]: parsedValue }));
   };
 
-  const handleAddRole = () => {
+ const handleAddRole = () => {
     const newId = (roles.length + 1).toString();
     const defaultRole = predefinedRoles[0]; // Use the first predefined role as default
-    setRoles(prev => [...prev, { id: newId, name: defaultRole.name }]);
+    setRoles(prev => [...prev, { id: newId, name: defaultRole.name, code: defaultRole.code }]);
     setCommitments(prev => ({
       ...prev,
       [newId]: chunks.reduce((acc, chunk) => ({ ...acc, [chunk]: 50 }), {})
@@ -265,6 +266,13 @@ const handleWorkingDaysChange = (chunk, value) => {
     setHourlyRates(prev => ({ ...prev, [newId]: defaultRole.hourlyRate }));
     setHourlyCosts(prev => ({ ...prev, [newId]: defaultRole.hourlyCost }));
     setWorkingHours(prev => ({ ...prev, [newId]: 8 }));
+  };
+
+  const handleRoleChange = (roleId, newRoleName) => {
+    const selectedRole = predefinedRoles.find(role => role.name === newRoleName);
+    setRoles(prev => prev.map(r => r.id === roleId ? { ...r, name: newRoleName, code: selectedRole.code } : r));
+    setHourlyRates(prev => ({ ...prev, [roleId]: selectedRole.hourlyRate }));
+    setHourlyCosts(prev => ({ ...prev, [roleId]: selectedRole.hourlyCost }));
   };
 
   const handleRemoveRole = (idToRemove) => {
@@ -281,13 +289,6 @@ const handleWorkingDaysChange = (chunk, value) => {
       const { [idToRemove]: _, ...rest } = prev;
       return rest;
     });
-  };
-
-  const handleRoleChange = (roleId, newRoleName) => {
-    const selectedRole = predefinedRoles.find(role => role.name === newRoleName);
-    setRoles(prev => prev.map(r => r.id === roleId ? { ...r, name: newRoleName } : r));
-    setHourlyRates(prev => ({ ...prev, [roleId]: selectedRole.hourlyRate }));
-    setHourlyCosts(prev => ({ ...prev, [roleId]: selectedRole.hourlyCost }));
   };
 
   const handleAddChunk = () => {
@@ -705,10 +706,11 @@ const handleWorkingDaysChange = (chunk, value) => {
                               ))}
                             </SelectContent>
                           </Select>
+                          <span className="ml-4 text-sm text-gray-500">Role Code: {role.code}</span>
                           <Button 
                             variant="ghost" 
                             size="icon"
-                            className="ml-2" 
+                            className="ml-auto" 
                             onClick={() => handleRemoveRole(role.id)}
                           >
                             <X className="h-4 w-4" />
