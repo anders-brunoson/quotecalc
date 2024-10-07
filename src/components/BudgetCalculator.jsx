@@ -46,6 +46,7 @@ const QuoteCalculator = () => {
   const editInputRef = useRef(null);
   const [chunkOrder, setChunkOrder] = React.useState([]);
   const [selectorKey, setSelectorKey] = useState(0);
+  const [discount, setDiscount] = useState(0);  
 
   const [roles, setRoles] = useState([
     { id: '1', name: 'Systems Developer BE', code: '302' },
@@ -77,7 +78,8 @@ const QuoteCalculator = () => {
       workingHours,
       rateCardName,
       predefinedRoles,
-      chunkOrder
+      chunkOrder,
+      discount  // Include discount in the exported state
     };
     const jsonData = exportStateToJSON(stateToExport);
     const blob = new Blob([jsonData], { type: 'application/json' });
@@ -107,6 +109,7 @@ const QuoteCalculator = () => {
           setRateCardName(importedState.rateCardName);
           setPredefinedRoles(importedState.predefinedRoles);
           setChunkOrder(importedState.chunkOrder);
+          setDiscount(importedState.discount);  // Set the imported discount
           setActiveTab(importedState.chunks[0]);
           setSelectedChunks([]);
           // Force re-render of role selectors
@@ -302,13 +305,27 @@ const QuoteCalculator = () => {
     setBudget(newBudget);
   };
 
+  const handleDiscountChange = (value) => {
+    setDiscount(parseFloat(value) || 0);
+  };  
+
   const calculateTotalSummary = () => {
-    return budget.total || {
+    const summary = budget.total || {
       total: 0,
       breakdown: {},
       hours: {},
       commitments: {},
       grossMargin: {}
+    };
+
+    const discountAmount = (summary.total * discount) / 100;
+    const discountedTotal = summary.total - discountAmount;
+
+    return {
+      ...summary,
+      discountPercentage: discount,
+      discountAmount: discountAmount,
+      discountedTotal: discountedTotal
     };
   };
 
@@ -652,15 +669,12 @@ const QuoteCalculator = () => {
   };
 
   const calculateGrossMargin = (totalSummary) => {
-    let totalRevenue = 0;
+    let totalRevenue = totalSummary.discountedTotal || 0;
     let totalCost = 0;
 
     roles.forEach(role => {
-      const revenue = totalSummary.breakdown[role.id] || 0;
       const hours = totalSummary.hours[role.id] || 0;
       const cost = hours * (hourlyCosts[role.id] || 0);
-
-      totalRevenue += revenue;
       totalCost += cost;
     });
 
@@ -909,7 +923,7 @@ const QuoteCalculator = () => {
             <div className="flex justify-between items-center">
               <span className="text-xl font-bold">Total Summary</span>
               <div className="text-right">
-                <div className="text-2xl font-bold">{calculateTotalSummary().total.toLocaleString()} SEK</div>
+                <div className="text-2xl font-bold">{calculateTotalSummary().discountedTotal.toLocaleString()} SEK</div>
                 <div className="text-sm">
                   GM: {calculateGrossMargin(calculateTotalSummary()).monetary.toLocaleString()} SEK 
                   ({calculateGrossMargin(calculateTotalSummary()).percentage.toFixed(2)}%)
@@ -918,6 +932,18 @@ const QuoteCalculator = () => {
             </div>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex items-center">
+              <label className="mr-2 font-semibold text-red-600">Discount (%): </label>
+              <Input
+                type="number"
+                value={discount}
+                onChange={(e) => handleDiscountChange(e.target.value)}
+                className="w-20 border-red-500 focus:ring-red-500 focus:border-red-500 text-red-600"
+                min="0"
+                max="100"
+                step="0.1"
+              />
+            </div>
             <div className="space-y-2 text-sm">
               <div className="grid grid-cols-7 font-medium">
                 <span className="col-span-1 text-left">Role</span>
@@ -965,6 +991,18 @@ const QuoteCalculator = () => {
                 </span>
                 <span className="text-right">
                   {calculateTotalSummary().total.toLocaleString()} SEK
+                </span>
+              </div>
+              <div className="grid grid-cols-7 text-sm italic text-red-600 font-semibold">
+                <span className="col-span-5 text-left">Discount ({discount}%)</span>
+                <span className="col-span-2 text-right">
+                  -{calculateTotalSummary().discountAmount.toLocaleString()} SEK
+                </span>
+              </div>
+              <div className="grid grid-cols-7 font-bold text-lg">
+                <span className="col-span-5 text-left">Discounted Total</span>
+                <span className="col-span-2 text-right">
+                  {calculateTotalSummary().discountedTotal.toLocaleString()} SEK
                 </span>
               </div>
             </div>
