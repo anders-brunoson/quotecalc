@@ -31,15 +31,16 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import CSVUpload from './CSVUpload';
+import RateCardUpload from './RateCardUpload';
 
 const QuoteCalculator = () => {
   const [chunks, setChunks] = useState(['2025 H1',`2025 H2`]);
   const [roles, setRoles] = useState([
-    { id: '1', name: 'Systems Developer BE', type: 'Senior' },
-    { id: '2', name: 'Systems Developer FE', type: 'Medior' },
-    { id: '3', name: 'UX Designer', type: 'Junior' },
-    { id: '4', name: 'Digital Designer', type: 'Senior' },
-    { id: '5', name: 'Project Manager', type: 'Senior' }
+    { id: '1', name: 'Systems Developer BE', type: 'Senior', rateCard: 'Marathon X 2018', roleCode: '302' },
+    { id: '2', name: 'Systems Developer FE', type: 'Medior', rateCard: 'Marathon X 2018', roleCode: '302' },
+    { id: '3', name: 'UX Designer', type: 'Junior', rateCard: 'Marathon X 2018', roleCode: '302' },
+    { id: '4', name: 'Digital Designer', type: 'Senior', rateCard: 'Marathon X 2018', roleCode: '302' },
+    { id: '5', name: 'Project Manager', type: 'Senior', rateCard: 'Marathon X 2018', roleCode: '302' }
   ]);
   const [availableRoles, setAvailableRoles] = useState([
     { id: 'role1', name: 'Systems Developer BE', type: 'Senior' },
@@ -84,7 +85,12 @@ const QuoteCalculator = () => {
     setChunkOrder(data.chunks);
     setActiveTab(data.chunks[0]);
     setSelectedChunks([]);
-  }; 
+  };
+
+  const handleRateCardUploaded = (data) => {
+    setAvailableRoles(data.roles);
+    setHourlyCosts(data.hourlyCosts);
+  };
 
   useEffect(() => {
     initializeState();
@@ -617,6 +623,18 @@ const handleWorkingDaysChange = (chunk, value) => {
     ));
   };
 
+  const handleRateCardChange = (roleId, value) => {
+    setRoles(prev => prev.map(role => 
+      role.id === roleId ? { ...role, rateCard: value } : role
+    ));
+  };
+
+  const handleRoleCodeChange = (roleId, value) => {
+    setRoles(prev => prev.map(role => 
+      role.id === roleId ? { ...role, roleCode: value } : role
+    ));
+  };  
+
   const RoleSettingsModal = ({ role, isOpen, onClose }) => {
     const [localHourlyCost, setLocalHourlyCost] = useState(hourlyCosts[role.type]);
 
@@ -733,6 +751,7 @@ const handleWorkingDaysChange = (chunk, value) => {
           <Download className="mr-2 h-4 w-4" /> Download CSV
         </Button>
         <CSVUpload onDataUploaded={handleDataUploaded} />
+        <RateCardUpload onRateCardUploaded={handleRateCardUploaded} />
       </div>
 
       {isAddingChunk && (
@@ -927,6 +946,26 @@ const handleWorkingDaysChange = (chunk, value) => {
                                     max={100}
                                     step={1}
                                     onValueChange={(val) => handleCommitmentChange(role.id, chunk, val)}
+                                  />
+                                </div>
+                                <div className="w-full sm:w-auto">
+                                  <Label className="text-sm">Rate Card</Label>
+                                  <Input
+                                    type="text"
+                                    value={role.rateCard}
+                                    onChange={(e) => handleRateCardChange(role.id, e.target.value)}
+                                    className="mt-1"
+                                    disabled={true}
+                                  />
+                                </div>
+                                <div className="w-full sm:w-auto">
+                                  <Label className="text-sm">Role Code</Label>
+                                  <Input
+                                    type="text"
+                                    value={role.roleCode}
+                                    onChange={(e) => handleRoleCodeChange(role.id, e.target.value)}
+                                    className="mt-1"
+                                    disabled={true}
                                   />
                                 </div>
                               </div>
