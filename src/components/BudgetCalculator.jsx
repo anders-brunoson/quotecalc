@@ -114,7 +114,18 @@ const QuoteCalculator = () => {
     const grandTotalGrossMargin = {};
 
     chunks.forEach(chunk => {
-      newBudget[chunk] = { total: 0, breakdown: {}, hours: {}, commitments: {}, grossMargin: {} };
+      newBudget[chunk] = { 
+        total: 0, 
+        breakdown: {}, 
+        hours: {}, 
+        commitments: {}, 
+        grossMargin: {},
+        totalGrossMargin: 0,
+        totalGrossMarginPercentage: 0
+      };
+      let chunkRevenue = 0;
+      let chunkCost = 0;
+
       roles.forEach(role => {
         const commitment = commitments[role.id]?.[chunk] || 0;
         const days = workingDays[chunk] || 0;
@@ -131,11 +142,17 @@ const QuoteCalculator = () => {
         newBudget[chunk].grossMargin[role.id] = grossMarginPercentage;
         newBudget[chunk].total += revenue;
 
+        chunkRevenue += revenue;
+        chunkCost += cost;
+
         grandTotalBreakdown[role.id] = (grandTotalBreakdown[role.id] || 0) + revenue;
         grandTotalHours[role.id] = (grandTotalHours[role.id] || 0) + hours;
         grandTotalCommitments[role.id] = (grandTotalCommitments[role.id] || 0) + commitment;
         grandTotalGrossMargin[role.id] = (grandTotalGrossMargin[role.id] || 0) + grossMargin;
       });
+
+      newBudget[chunk].totalGrossMargin = chunkRevenue - chunkCost;
+      newBudget[chunk].totalGrossMarginPercentage = chunkRevenue > 0 ? ((chunkRevenue - chunkCost) / chunkRevenue) * 100 : 0;
       grandTotal += newBudget[chunk].total;
     });
 
@@ -475,7 +492,7 @@ const handleWorkingDaysChange = (chunk, value) => {
     return totalHours > 0 ? Math.round(totalAmount / totalHours) : 0;
   };
 
-  const calculateAverageGrossMargin = (totalSummary) => {
+  const calculateGrossMargin = (totalSummary) => {
     let totalRevenue = 0;
     let totalCost = 0;
 
@@ -489,7 +506,12 @@ const handleWorkingDaysChange = (chunk, value) => {
     });
 
     const grossMargin = totalRevenue - totalCost;
-    return totalRevenue > 0 ? (grossMargin / totalRevenue) * 100 : 0;
+    const grossMarginPercentage = totalRevenue > 0 ? (grossMargin / totalRevenue) * 100 : 0;
+
+    return {
+      monetary: grossMargin,
+      percentage: grossMarginPercentage
+    };
   };
 
   return (
@@ -693,102 +715,139 @@ const handleWorkingDaysChange = (chunk, value) => {
           <CardHeader>
             <div className="flex justify-between items-center">
               <span className="text-xl font-bold">Total Summary</span>
-              <span className="text-2xl font-bold">{calculateTotalSummary().total.toLocaleString()} SEK</span>
+              <div className="text-right">
+                <div className="text-2xl font-bold">{calculateTotalSummary().total.toLocaleString()} SEK</div>
+                <div className="text-sm">
+                  GM: {calculateGrossMargin(calculateTotalSummary()).monetary.toLocaleString()} SEK 
+                  ({calculateGrossMargin(calculateTotalSummary()).percentage.toFixed(2)}%)
+                </div>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              <div className="grid grid-cols-6 font-medium">
+              <div className="grid grid-cols-7 font-medium">
                 <span className="col-span-1 text-left">Role</span>
                 <span className="text-right">Avg. Commitment</span>
                 <span className="text-right">Total Hours</span>
                 <span className="text-right">Hourly Rate</span>
-                <span className="text-right">Gross Margin</span>
+                <span className="text-right">GM</span>
+                <span className="text-right">GM %</span>
                 <span className="text-right">Total Amount</span>
               </div>
               {roles.map(role => {
                 const totalSummary = calculateTotalSummary();
+                const roleRevenue = totalSummary.breakdown[role.id] || 0;
+                const roleHours = totalSummary.hours[role.id] || 0;
+                const roleCost = roleHours * (hourlyCosts[role.id] || 0);
+                const roleGrossMargin = roleRevenue - roleCost;
                 return (
-                  <div key={role.id} className="grid grid-cols-6">
+                  <div key={role.id} className="grid grid-cols-7">
                     <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
                     <span className="text-right">{totalSummary.commitments[role.id] || 0}%</span>
-                    <span className="text-right">{totalSummary.hours[role.id] || 0}</span>
+                    <span className="text-right">{roleHours}</span>
                     <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
+                    <span className="text-right">{roleGrossMargin.toLocaleString()} SEK</span>
                     <span className="text-right">{(totalSummary.grossMargin[role.id] || 0).toFixed(2)}%</span>
-                    <span className="text-right">{(totalSummary.breakdown[role.id] || 0).toLocaleString()} SEK</span>
+                    <span className="text-right">{roleRevenue.toLocaleString()} SEK</span>
                   </div>
                 );
               })}
-                <div className="grid grid-cols-6 font-bold pt-2 border-t">
-                  <span className="col-span-1 text-left">Grand Total</span>
-                  <span className="text-right">
-                    {Object.values(calculateTotalSummary().commitments).reduce((sum, value) => sum + (value || 0), 0)}%
-                  </span>
-                  <span className="text-right">
-                    {Object.values(calculateTotalSummary().hours).reduce((sum, value) => sum + (value || 0), 0)}
-                  </span>
-                  <span className="text-right">
-                    {calculateAverageHourlyRate(calculateTotalSummary())} SEK
-                  </span>
-                  <span className="text-right">
-                    {calculateAverageGrossMargin(calculateTotalSummary()).toFixed(2)}%
-                  </span>
-                  <span className="text-right">
-                    {calculateTotalSummary().total.toLocaleString()} SEK
-                  </span>
-                </div>
+              <div className="grid grid-cols-7 font-bold pt-2 border-t">
+                <span className="col-span-1 text-left">Grand Total</span>
+                <span className="text-right">
+                  {Object.values(calculateTotalSummary().commitments).reduce((sum, value) => sum + (value || 0), 0)}%
+                </span>
+                <span className="text-right">
+                  {Object.values(calculateTotalSummary().hours).reduce((sum, value) => sum + (value || 0), 0)}
+                </span>
+                <span className="text-right">
+                  {calculateAverageHourlyRate(calculateTotalSummary())} SEK
+                </span>
+                <span className="text-right">
+                  {calculateGrossMargin(calculateTotalSummary()).monetary.toLocaleString()} SEK
+                </span>
+                <span className="text-right">
+                  {calculateGrossMargin(calculateTotalSummary()).percentage.toFixed(2)}%
+                </span>
+                <span className="text-right">
+                  {calculateTotalSummary().total.toLocaleString()} SEK
+                </span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {chunkOrder.map((period, index) => {
-            const { total, breakdown, hours, commitments } = budget[period] || {};
-            return (
-              <Card key={index}>
-                <CardHeader className="capitalize">
-                  <div className="flex justify-between items-center">
-                    <span>{period}</span>
-                    <span className="text-2xl font-bold">{total?.toLocaleString()} SEK</span>
+        {chunkOrder.map((period, index) => {
+          const { total, breakdown, hours, commitments, grossMargin, totalGrossMargin, totalGrossMarginPercentage } = budget[period] || {};
+          return (
+            <Card key={index}>
+              <CardHeader className="capitalize">
+                <div className="flex justify-between items-center">
+                  <span>{period}</span>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold">{total?.toLocaleString()} SEK</div>
+                    <div className="text-sm">
+                      GM: {totalGrossMargin?.toLocaleString()} SEK ({totalGrossMarginPercentage?.toFixed(2)}%)
+                    </div>
                   </div>
-                </CardHeader>
-                {breakdown && hours && commitments && (
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="grid grid-cols-5 font-medium">
-                        <span className="col-span-1 text-left">Role</span>
-                        <span className="text-right">Commitment</span>
-                        <span className="text-right">Hours</span>
-                        <span className="text-right">Hourly Rate</span>
-                        <span className="text-right">Amount</span>
-                      </div>
-                      {roles.map(role => (
-                        <div key={role.id} className="grid grid-cols-5">
+                </div>
+              </CardHeader>
+              {breakdown && hours && commitments && grossMargin && (
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div className="grid grid-cols-7 font-medium">
+                      <span className="col-span-1 text-left">Role</span>
+                      <span className="text-right">Commitment</span>
+                      <span className="text-right">Hours</span>
+                      <span className="text-right">Hourly Rate</span>
+                      <span className="text-right">GM</span>
+                      <span className="text-right">GM %</span>
+                      <span className="text-right">Amount</span>
+                    </div>
+                    {roles.map(role => {
+                      const roleRevenue = breakdown[role.id] || 0;
+                      const roleHours = hours[role.id] || 0;
+                      const roleCost = roleHours * (hourlyCosts[role.id] || 0);
+                      const roleGrossMargin = roleRevenue - roleCost;
+                      const roleGrossMarginPercentage = roleRevenue > 0 ? (roleGrossMargin / roleRevenue) * 100 : 0;
+                      return (
+                        <div key={role.id} className="grid grid-cols-7">
                           <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
                           <span className="text-right">{commitments[role.id] || 0}%</span>
                           <span className="text-right">{hours[role.id] || 0}</span>
                           <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
+                          <span className="text-right">{roleGrossMargin?.toLocaleString()} SEK</span>
+                          <span className="text-right">{roleGrossMarginPercentage.toFixed(2)}%</span>
                           <span className="text-right">{(breakdown[role.id] || 0).toLocaleString()} SEK</span>
                         </div>
-                      ))}
-                      <div className="grid grid-cols-5 font-bold pt-2 border-t">
-                        <span className="col-span-1 text-left">Total</span>
-                        <span className="text-right">
-                          {Object.values(commitments).reduce((sum, value) => sum + (value || 0), 0)}%
-                        </span>
-                        <span className="text-right">
-                          {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0)}
-                        </span>
-                        <span className="text-right">
-                          {calculateAverageHourlyRate({ hours, breakdown })} SEK
-                        </span>
-                        <span className="text-right">
-                          {Object.values(breakdown).reduce((sum, value) => sum + (value || 0), 0).toLocaleString()} SEK
-                        </span>
-                      </div>
+                      );
+                    })}
+                    <div className="grid grid-cols-7 font-bold pt-2 border-t">
+                      <span className="col-span-1 text-left">Total</span>
+                      <span className="text-right">
+                        {Object.values(commitments).reduce((sum, value) => sum + (value || 0), 0)}%
+                      </span>
+                      <span className="text-right">
+                        {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0)}
+                      </span>
+                      <span className="text-right">
+                        {calculateAverageHourlyRate({ hours, breakdown })} SEK
+                      </span>
+                      <span className="text-right">
+                        {totalGrossMargin?.toLocaleString()} SEK
+                      </span>
+                      <span className="text-right">
+                        {totalGrossMarginPercentage?.toFixed(2)}%
+                      </span>
+                      <span className="text-right">
+                        {total?.toLocaleString()} SEK
+                      </span>
                     </div>
-                  </CardContent>
-                )}
-              </Card>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
             );
           })}
         </div>
