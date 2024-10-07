@@ -25,10 +25,10 @@ const CSVUpload = ({ onDataUploaded }) => {
   });
 
   const processCSVData = (data) => {
-    // Filter out any rows with empty month or role
-    const validData = data.filter(row => row.month && row.role);
+    // Filter out any rows with empty chunk or role
+    const validData = data.filter(row => row.chunk && row.role);
 
-    const months = [...new Set(validData.map(row => row.month))];
+    const chunks = [...new Set(validData.map(row => row.chunk))];
     const roleNames = [...new Set(validData.map(row => row.role))];
     const roles = roleNames.map((name, index) => ({ id: (index + 1).toString(), name }));
     
@@ -45,15 +45,15 @@ const CSVUpload = ({ onDataUploaded }) => {
 
     validData.forEach(row => {
       const roleId = roles.find(r => r.name === row.role).id;
-      commitments[roleId][row.month] = parseInt(row.commitmentLevel);
+      commitments[roleId][row.chunk] = parseInt(row.commitmentLevel);
       hourlyRates[roleId] = parseInt(row.hourlyRate);
       workingHours[roleId] = parseFloat(row.workingHoursPerDay);
-      if (!workingDays[row.month]) {
-        workingDays[row.month] = Math.round(parseInt(row.hours) / (parseFloat(row.workingHoursPerDay) * parseInt(row.commitmentLevel) / 100));
+      if (!workingDays[row.chunk]) {
+        workingDays[row.chunk] = Math.round(parseInt(row.hours) / (parseFloat(row.workingHoursPerDay) * parseInt(row.commitmentLevel) / 100));
       }
     });
 
-    return { months, roles, commitments, hourlyRates, workingHours, workingDays };
+    return { chunks, roles, commitments, hourlyRates, workingHours, workingDays };
   };
 
   return (

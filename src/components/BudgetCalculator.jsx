@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download } from 'lucide-react';
+import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download, Upload } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -15,20 +15,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import CSVUpload from './CSVUpload';
-
+import RateCardCSVUpload from './RateCardCSVUpload';
+import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
 
 const QuoteCalculator = () => {
   const [chunks, setChunks] = useState(['2025 H1', '2025 H2']);
-  const [roles, setRoles] = useState([
-    { id: '1', name: 'Systems Developer BE' },
-    { id: '2', name: 'Systems Developer FE' },
-    { id: '3', name: 'UX Designer' },
-    { id: '4', name: 'Digital Designer' },
-    { id: '5', name: 'Project Manager' }
-  ]);
-
   const [commitments, setCommitments] = useState({});
+  const [rateCardName, setRateCardName] = useState('');  
   const [hourlyRates, setHourlyRates] = useState({});
   const [hourlyCosts, setHourlyCosts] = useState({});
   const [workingDays, setWorkingDays] = useState({});
@@ -44,6 +45,133 @@ const QuoteCalculator = () => {
   const [editingChunk, setEditingChunk] = useState(null);
   const editInputRef = useRef(null);
   const [chunkOrder, setChunkOrder] = React.useState([]);
+  const [selectorKey, setSelectorKey] = useState(0);
+
+  const [roles, setRoles] = useState([
+    { id: '1', name: 'Systems Developer BE', code: '302' },
+    { id: '2', name: 'Systems Developer FE', code: '302' },
+    { id: '3', name: 'UX Designer', code: '200' },
+    { id: '4', name: 'Digital Designer', code: '200' },
+    { id: '5', name: 'Project Manager', code: '030' }
+  ]);
+
+  const [predefinedRoles, setPredefinedRoles] = useState([
+    { name: 'Systems Developer BE', hourlyRate: 1200, hourlyCost: 800, code: '302' },
+    { name: 'Systems Developer FE', hourlyRate: 1100, hourlyCost: 750, code: '302' },
+    { name: 'UX Designer', hourlyRate: 1000, hourlyCost: 700, code: '200' },
+    { name: 'Digital Designer', hourlyRate: 950, hourlyCost: 650, code: '200' },
+    { name: 'Project Manager', hourlyRate: 1300, hourlyCost: 900, code: '030' },
+    { name: 'DevOps Engineer', hourlyRate: 1250, hourlyCost: 850, code: '400' },
+    { name: 'Data Scientist', hourlyRate: 1400, hourlyCost: 950, code: '306' },
+    { name: 'QA Engineer', hourlyRate: 1000, hourlyCost: 700, code: '303' },
+  ]);
+
+  const handleExportJSON = () => {
+    const stateToExport = {
+      chunks,
+      roles,
+      commitments,
+      hourlyRates,
+      hourlyCosts,
+      workingDays,
+      workingHours,
+      rateCardName,
+      predefinedRoles,
+      chunkOrder
+    };
+    const jsonData = exportStateToJSON(stateToExport);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'budget_calculator_state.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportJSON = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedState = importStateFromJSON(e.target.result);
+          setChunks(importedState.chunks);
+          setRoles(importedState.roles);
+          setCommitments(importedState.commitments);
+          setHourlyRates(importedState.hourlyRates);
+          setHourlyCosts(importedState.hourlyCosts);
+          setWorkingDays(importedState.workingDays);
+          setWorkingHours(importedState.workingHours);
+          setRateCardName(importedState.rateCardName);
+          setPredefinedRoles(importedState.predefinedRoles);
+          setChunkOrder(importedState.chunkOrder);
+          setActiveTab(importedState.chunks[0]);
+          setSelectedChunks([]);
+          // Force re-render of role selectors
+          setSelectorKey(prevKey => prevKey + 1);
+        } catch (error) {
+          console.error('Error importing JSON:', error);
+          // You might want to show an error message to the user here
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const sortedPredefinedRoles = React.useMemo(() => {
+    return [...predefinedRoles].sort((a, b) => a.name.localeCompare(b.name));
+  }, [predefinedRoles]);
+
+  useEffect(() => {
+    console.log("QuoteCalculator component loaded");
+  }, []);
+
+  const handleRateCardUploaded = (data) => {
+    console.log("Rate card uploaded, received data:", data);
+    
+    if (!data || !data.roles || !Array.isArray(data.roles)) {
+      console.error("Invalid rate card data:", data);
+      return;
+    }
+
+    setRateCardName(data.rateCardName);
+    
+    const newPredefinedRoles = data.roles.map(role => {
+      console.log("Processing role:", role);
+      return {
+        name: role.RoleName,
+        hourlyRate: parseInt(role.HourlyRate),
+        hourlyCost: parseInt(role.HourlyCost),
+        code: role.RoleCode
+      };
+    });
+
+    console.log("Setting new predefined roles:", newPredefinedRoles);
+    setPredefinedRoles(newPredefinedRoles);
+    setSelectorKey(prevKey => prevKey + 1);
+
+    // Update existing roles with new rates and costs if they match
+    setRoles(prevRoles => {
+      const updatedRoles = prevRoles.map(role => {
+        const matchingNewRole = newPredefinedRoles.find(newRole => newRole.name === role.name);
+        if (matchingNewRole) {
+          console.log(`Updating existing role: ${role.name}`);
+          setHourlyRates(prev => ({ ...prev, [role.id]: matchingNewRole.hourlyRate }));
+          setHourlyCosts(prev => ({ ...prev, [role.id]: matchingNewRole.hourlyCost }));
+          return { ...role, code: matchingNewRole.code };
+        }
+        return role;
+      });
+      console.log("Updated roles:", updatedRoles);
+      return updatedRoles;
+    });
+  };
+
+  useEffect(() => {
+    console.log("predefinedRoles updated:", predefinedRoles);
+  }, [predefinedRoles]);
 
   const handleDataUploaded = (data) => {
     setChunks(data.chunks);
@@ -185,7 +313,16 @@ const QuoteCalculator = () => {
   };
 
   const handleHourlyCostChange = (roleId, value) => {
-    setHourlyCosts(prev => ({ ...prev, [roleId]: value === '' ? '' : parseInt(value) || 0 }));
+    const newValue = value === '' ? '' : parseInt(value) || 0;
+    setHourlyCosts(prev => ({ ...prev, [roleId]: newValue }));
+    
+    // Update the predefined role if it matches
+    const updatedRole = roles.find(r => r.id === roleId);
+    if (updatedRole) {
+      setPredefinedRoles(prev => 
+        prev.map(r => r.name === updatedRole.name ? { ...r, hourlyCost: newValue } : r)
+      );
+    }
   };
 
   const handleCommitmentChange = (roleId, chunk, value) => {
@@ -200,19 +337,28 @@ const QuoteCalculator = () => {
   };
 
   const handleHourlyRateChange = (roleId, value) => {
-    setHourlyRates(prev => ({ ...prev, [roleId]: value === '' ? '' : parseInt(value) || 0 }));
+    const newValue = value === '' ? '' : parseInt(value) || 0;
+    setHourlyRates(prev => ({ ...prev, [roleId]: newValue }));
+    
+    // Update the predefined role if it matches
+    const updatedRole = roles.find(r => r.id === roleId);
+    if (updatedRole) {
+      setPredefinedRoles(prev => 
+        prev.map(r => r.name === updatedRole.name ? { ...r, hourlyRate: newValue } : r)
+      );
+    }
   };
 
-const handleWorkingDaysChange = (chunk, value) => {
-  const chunksToUpdate = selectedChunks.length > 0 ? selectedChunks : [chunk];
-  setWorkingDays(prev => {
-    const newWorkingDays = { ...prev };
-    chunksToUpdate.forEach(m => {
-      newWorkingDays[m] = value === '' ? '' : parseInt(value) || 0;
+  const handleWorkingDaysChange = (chunk, value) => {
+    const chunksToUpdate = selectedChunks.length > 0 ? selectedChunks : [chunk];
+    setWorkingDays(prev => {
+      const newWorkingDays = { ...prev };
+      chunksToUpdate.forEach(m => {
+        newWorkingDays[m] = value === '' ? '' : parseInt(value) || 0;
+      });
+      return newWorkingDays;
     });
-    return newWorkingDays;
-  });
-};
+  };
 
   const handleWorkingHoursChange = (roleId, value) => {
     const parsedValue = value === '' ? '' : parseFloat(value);
@@ -220,14 +366,27 @@ const handleWorkingDaysChange = (chunk, value) => {
   };
 
   const handleAddRole = () => {
-    const newId = (roles.length + 1).toString();
-    setRoles(prev => [...prev, { id: newId, name: `New Role ${newId}` }]);
+    const newId = Date.now().toString(); // Use timestamp as unique ID
+    const defaultRole = predefinedRoles[0];
+    setRoles(prev => [...prev, { 
+      id: newId, 
+      name: defaultRole.name,
+      code: defaultRole.code 
+    }]);
     setCommitments(prev => ({
       ...prev,
       [newId]: chunks.reduce((acc, chunk) => ({ ...acc, [chunk]: 50 }), {})
     }));
-    setHourlyRates(prev => ({ ...prev, [newId]: 1000 }));
+    setHourlyRates(prev => ({ ...prev, [newId]: defaultRole.hourlyRate }));
+    setHourlyCosts(prev => ({ ...prev, [newId]: defaultRole.hourlyCost }));
     setWorkingHours(prev => ({ ...prev, [newId]: 8 }));
+  };
+
+  const handleRoleChange = (roleId, newRoleName) => {
+    const selectedRole = predefinedRoles.find(role => role.name === newRoleName);
+    setRoles(prev => prev.map(r => r.id === roleId ? { ...r, name: newRoleName, code: selectedRole.code } : r));
+    setHourlyRates(prev => ({ ...prev, [roleId]: selectedRole.hourlyRate }));
+    setHourlyCosts(prev => ({ ...prev, [roleId]: selectedRole.hourlyCost }));
   };
 
   const handleRemoveRole = (idToRemove) => {
@@ -552,11 +711,33 @@ const handleWorkingDaysChange = (chunk, value) => {
         >
           <X className="mr-2 h-4 w-4" /> Remove Chunk(s)
         </Button>
+{/*
         <Button onClick={handleDownloadCSV} className="flex items-center">
           <Download className="mr-2 h-4 w-4" /> Download CSV
         </Button>
         <CSVUpload onDataUploaded={handleDataUploaded} />
+*/}        
+        <RateCardCSVUpload onRateCardUploaded={handleRateCardUploaded} />
+        <Button onClick={handleExportJSON} className="flex items-center">
+          <Download className="mr-2 h-4 w-4" /> Export JSON
+        </Button>
+        <Button onClick={() => document.getElementById('import-json').click()} className="flex items-center">
+          <Upload className="mr-2 h-4 w-4" /> Import JSON
+        </Button>
+        <input
+          id="import-json"
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          onChange={handleImportJSON}
+        />            
       </div>
+
+      {rateCardName && (
+        <div className="mb-4">
+          <h2 className="text-xl font-bold">Current Rate Card: {rateCardName}</h2>
+        </div>
+      )}      
 
       {isAddingChunk && (
         <div className="mb-4 flex space-x-2">
@@ -629,7 +810,7 @@ const handleWorkingDaysChange = (chunk, value) => {
                         />
                       </label>
                     </div>
-                    <div className="space-y-4 mb-6">
+                  <div className="space-y-4 mb-6">
                     {roles.map((role, index) => (
                       <div
                         key={role.id}
@@ -637,30 +818,42 @@ const handleWorkingDaysChange = (chunk, value) => {
                         onDragOver={(e) => onDragOver(e, index)}
                         onDrop={(e) => onDrop(e, index)}
                       >
-                          <div className="flex items-center mb-2">
-                            <div 
-                              className="mr-2 cursor-move drag-handle"
-                              draggable
-                              onDragStart={(e) => onDragStart(e, index)}
-                              onDragEnd={onDragEnd}
-                            >
-                              <GripVertical className="h-5 w-5 text-gray-400" />
-                            </div>
-                            <Input
-                              value={role.name}
-                              onChange={(e) => setRoles(prev => prev.map(r => r.id === role.id ? { ...r, name: e.target.value } : r))}
-                              className="font-medium flex-grow"
-                            />
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              className="ml-2" 
-                              onClick={() => handleRemoveRole(role.id)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                        <div className="flex items-center mb-2">
+                          <div 
+                            className="mr-2 cursor-move drag-handle"
+                            draggable
+                            onDragStart={(e) => onDragStart(e, index)}
+                            onDragEnd={onDragEnd}
+                          >
+                            <GripVertical className="h-5 w-5 text-gray-400" />
                           </div>
-                          <div className="flex flex-wrap items-center gap-4 mt-2">
+                          <Select
+                            key={`${selectorKey}-${role.id}`}
+                            value={role.name}
+                            onValueChange={(value) => handleRoleChange(role.id, value)}
+                          >
+                            <SelectTrigger className="w-[270px]"> {/* Increased width by 50% */}
+                              <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {sortedPredefinedRoles.map((predefinedRole) => (
+                                <SelectItem key={`${predefinedRole.name}-${predefinedRole.code}`} value={predefinedRole.name}>
+                                  {predefinedRole.name} ({predefinedRole.code})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <span className="ml-4 text-sm text-gray-500">Role Code: {role.code}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="ml-auto" 
+                            onClick={() => handleRemoveRole(role.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-4 mt-2">
                           <div className="flex-grow min-w-[200px]">
                             <span className="text-sm">Commitment: {commitments[role.id]?.[chunk] || 0}%</span>
                             <Slider
@@ -782,12 +975,12 @@ const handleWorkingDaysChange = (chunk, value) => {
           const { total, breakdown, hours, commitments, grossMargin, totalGrossMargin, totalGrossMarginPercentage } = budget[period] || {};
           return (
             <Card key={index}>
-              <CardHeader className="capitalize">
+              <CardHeader className="text-xl font-bold capitalize">
                 <div className="flex justify-between items-center">
                   <span>{period}</span>
                   <div className="text-right">
                     <div className="text-2xl font-bold">{total?.toLocaleString()} SEK</div>
-                    <div className="text-sm">
+                    <div className="text-sm font-normal">
                       GM: {totalGrossMargin?.toLocaleString()} SEK ({totalGrossMarginPercentage?.toFixed(2)}%)
                     </div>
                   </div>
