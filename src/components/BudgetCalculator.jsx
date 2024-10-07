@@ -591,21 +591,21 @@ const QuoteCalculator = () => {
   <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>How to Use the Budget Calculator</DialogTitle>
+        <DialogTitle>How to Use the Quote Simulator</DialogTitle>
       </DialogHeader>
       <DialogDescription>
         <ol className="list-decimal list-inside space-y-2">
           <li>Add or remove roles using the "Add Role" and "X" buttons.</li>
-          <li>Add or remove chunks using the "Add Chunk" and "Remove Chunk" buttons.</li>
-          <li>Duoble-click chunk in the tabs section at the top to edit it.</li> 
-          <li>Ctrl/command + click to select multiple chunks to apply commitment level changes across them.</li>
-          <li>Verify the number of working days for each chunk.</li>
-          <li>Set the commitment percentage and hourly rate for each role.</li>
+          <li>Add or remove chunks (time periods, projects, whatever) using the "Add Chunk" and "Remove Chunk" buttons.</li>
+          <li>Double-click a chunk name in the tabs section to edit it.</li>
+          <li>Use Ctrl/Cmd + click to select multiple chunks for bulk editing of commitment levels.</li>
+          <li>Set working days for each chunk, and adjust commitment percentage, hourly rate, hourly cost, and working hours per day for each role.</li>
           <li>Drag and drop roles to reorder them.</li>
-          <li>Use the dark mode toggle for different viewing options.</li>
-          <li>View the calculated budget breakdown for each chunk and the total.</li>
-          <li>Download budget data as CSV to use with Excel or to store it.</li>
-          <li>Upload budget data as CSV (use same format as downloaded CSV).</li>
+          <li>View budget breakdowns for each chunk and the total, including gross margin calculations.</li>
+          <li>Import a rate card CSV to update role rates and costs.</li>
+          <li>Export your current setup as a JSON file for later use.</li>
+          <li>Import a previously saved JSON file to restore a saved configuration.</li>
+          <li>Toggle dark mode for different viewing options.</li>
         </ol>
       </DialogDescription>
     </DialogContent>
@@ -752,7 +752,7 @@ const QuoteCalculator = () => {
       )}
 
       <div className="flex flex-col xl:flex-row gap-6">
-      <div className="xl:w-1/2">
+      <div className="xl:w-2/5">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="mb-6 bg-gray-100 p-1 rounded-lg flex flex-wrap min-h-fit">
               <TabsList className="w-full flex flex-wrap justify-start bg-transparent">
@@ -903,7 +903,7 @@ const QuoteCalculator = () => {
         </Tabs>
       </div>
 
-      <div className="xl:w-1/2 space-y-4">
+      <div className="xl:w-3/5 space-y-4">
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
