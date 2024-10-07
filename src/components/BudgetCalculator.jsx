@@ -366,8 +366,8 @@ const QuoteCalculator = () => {
   };
 
   const handleAddRole = () => {
-    const newId = (roles.length + 1).toString();
-    const defaultRole = predefinedRoles[0]; // Use the first predefined role as default
+    const newId = Date.now().toString(); // Use timestamp as unique ID
+    const defaultRole = predefinedRoles[0];
     setRoles(prev => [...prev, { 
       id: newId, 
       name: defaultRole.name,
@@ -813,7 +813,7 @@ const QuoteCalculator = () => {
                   <div className="space-y-4 mb-6">
                     {roles.map((role, index) => (
                       <div
-                        key={`${role.id}-${selectorKey}`}
+                        key={role.id}
                         className="p-4 border rounded-lg relative role-card"
                         onDragOver={(e) => onDragOver(e, index)}
                         onDrop={(e) => onDrop(e, index)}
@@ -975,12 +975,12 @@ const QuoteCalculator = () => {
           const { total, breakdown, hours, commitments, grossMargin, totalGrossMargin, totalGrossMarginPercentage } = budget[period] || {};
           return (
             <Card key={index}>
-              <CardHeader className="capitalize">
+              <CardHeader className="text-xl font-bold capitalize">
                 <div className="flex justify-between items-center">
                   <span>{period}</span>
                   <div className="text-right">
                     <div className="text-2xl font-bold">{total?.toLocaleString()} SEK</div>
-                    <div className="text-sm">
+                    <div className="text-sm font-normal">
                       GM: {totalGrossMargin?.toLocaleString()} SEK ({totalGrossMarginPercentage?.toFixed(2)}%)
                     </div>
                   </div>
