@@ -25,6 +25,7 @@ import {
 import CSVUpload from './CSVUpload';
 import RateCardCSVUpload from './RateCardCSVUpload';
 import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
+import SearchableRoleSelect from './SearchableRoleSelect';
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -51,11 +52,11 @@ const QuoteCalculator = () => {
   const [discount, setDiscount] = useState(0);  
 
   const [roles, setRoles] = useState([
-    { id: '1', name: 'Systems Developer BE', code: '302' },
-    { id: '2', name: 'Systems Developer FE', code: '302' },
-    { id: '3', name: 'UX Designer', code: '200' },
-    { id: '4', name: 'Digital Designer', code: '200' },
-    { id: '5', name: 'Project Manager', code: '030' }
+    { id: '1', name: 'Systems Developer BE', code: '302', alias: '' },
+    { id: '2', name: 'Systems Developer FE', code: '302', alias: '' },
+    { id: '3', name: 'UX Designer', code: '200', alias: '' },
+    { id: '4', name: 'Digital Designer', code: '200', alias: '' },
+    { id: '5', name: 'Project Manager', code: '030', alias: '' }
   ]);
 
   const [predefinedRoles, setPredefinedRoles] = useState([
@@ -406,6 +407,10 @@ const QuoteCalculator = () => {
     setRoles(prev => prev.map(r => r.id === roleId ? { ...r, name: newRoleName, code: selectedRole.code } : r));
     setHourlyRates(prev => ({ ...prev, [roleId]: selectedRole.hourlyRate }));
     setHourlyCosts(prev => ({ ...prev, [roleId]: selectedRole.hourlyCost }));
+  };
+
+  const handleAliasChange = (roleId, newAlias) => {
+    setRoles(prev => prev.map(r => r.id === roleId ? { ...r, alias: newAlias } : r));
   };
 
   const handleRemoveRole = (idToRemove) => {
@@ -843,23 +848,21 @@ const QuoteCalculator = () => {
                           >
                             <GripVertical className="h-5 w-5 text-gray-400" />
                           </div>
-                          <Select
-                            key={`${selectorKey}-${role.id}`}
-                            value={role.name}
-                            onValueChange={(value) => handleRoleChange(role.id, value)}
-                          >
-                            <SelectTrigger className="w-[270px]"> {/* Increased width by 50% */}
-                              <SelectValue placeholder="Select a role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {sortedPredefinedRoles.map((predefinedRole) => (
-                                <SelectItem key={`${predefinedRole.name}-${predefinedRole.code}`} value={predefinedRole.name}>
-                                  {predefinedRole.name} ({predefinedRole.code})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <span className="ml-4 text-sm text-gray-500">Role Code: {role.code}</span>
+                          <div className="flex-grow">
+                            <SearchableRoleSelect
+                              roles={sortedPredefinedRoles}
+                              value={role.name}
+                              onChange={(value) => handleRoleChange(role.id, value)}
+                            />
+                          </div>
+                          <Input
+                            type="text"
+                            value={role.alias}
+                            onChange={(e) => handleAliasChange(role.id, e.target.value)}
+                            placeholder="Alias"
+                            className="ml-2 w-20"
+                          />
+                          <span className="ml-2 text-sm text-gray-500">Role Code: {role.code}</span>
                           <Button 
                             variant="ghost" 
                             size="icon"
@@ -947,8 +950,8 @@ const QuoteCalculator = () => {
               />
             </div>
             <div className="space-y-2 text-sm">
-              <div className="grid grid-cols-7 font-medium">
-                <span className="col-span-1 text-left">Role</span>
+              <div className="grid grid-cols-8 font-medium">
+                <span className="col-span-2 text-left">Role</span>
                 <span className="text-right">Avg. Commitment</span>
                 <span className="text-right">Total Hours</span>
                 <span className="text-right">Hourly Rate</span>
@@ -963,8 +966,10 @@ const QuoteCalculator = () => {
                 const roleCost = roleHours * (hourlyCosts[role.id] || 0);
                 const roleGrossMargin = roleRevenue - roleCost;
                 return (
-                  <div key={role.id} className="grid grid-cols-7">
-                    <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
+                  <div key={role.id} className="grid grid-cols-8">
+                    <span className="col-span-2 truncate text-left" title={`${role.name}${role.alias ? ` (${role.alias})` : ''}`}>
+                      {role.name}{role.alias ? ` (${role.alias})` : ''}
+                    </span>
                     <span className="text-right">{totalSummary.commitments[role.id] || 0}%</span>
                     <span className="text-right">{roleHours}</span>
                     <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
@@ -974,8 +979,8 @@ const QuoteCalculator = () => {
                   </div>
                 );
               })}
-              <div className="grid grid-cols-7 font-bold pt-2 border-t">
-                <span className="col-span-1 text-left">Grand Total</span>
+              <div className="grid grid-cols-8 font-bold pt-2 border-t">
+                <span className="col-span-2 text-left">Grand Total</span>
                 <span className="text-right">
                   {Object.values(calculateTotalSummary().commitments).reduce((sum, value) => sum + (value || 0), 0)}%
                 </span>
@@ -1029,8 +1034,8 @@ const QuoteCalculator = () => {
               {breakdown && hours && commitments && grossMargin && (
                 <CardContent>
                   <div className="space-y-2 text-sm">
-                    <div className="grid grid-cols-7 font-medium">
-                      <span className="col-span-1 text-left">Role</span>
+                    <div className="grid grid-cols-8 font-medium">
+                      <span className="col-span-2 text-left">Role</span>
                       <span className="text-right">Commitment</span>
                       <span className="text-right">Hours</span>
                       <span className="text-right">Hourly Rate</span>
@@ -1045,8 +1050,10 @@ const QuoteCalculator = () => {
                       const roleGrossMargin = roleRevenue - roleCost;
                       const roleGrossMarginPercentage = roleRevenue > 0 ? (roleGrossMargin / roleRevenue) * 100 : 0;
                       return (
-                        <div key={role.id} className="grid grid-cols-7">
-                          <span className="col-span-1 truncate text-left" title={role.name}>{role.name}</span>
+                        <div key={role.id} className="grid grid-cols-8">
+                          <span className="col-span-2 truncate text-left" title={`${role.name}${role.alias ? ` (${role.alias})` : ''}`}>
+                            {role.name}{role.alias ? ` (${role.alias})` : ''}
+                          </span>
                           <span className="text-right">{commitments[role.id] || 0}%</span>
                           <span className="text-right">{hours[role.id] || 0}</span>
                           <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
@@ -1056,8 +1063,8 @@ const QuoteCalculator = () => {
                         </div>
                       );
                     })}
-                    <div className="grid grid-cols-7 font-bold pt-2 border-t">
-                      <span className="col-span-1 text-left">Total</span>
+                    <div className="grid grid-cols-8 font-bold pt-2 border-t">
+                      <span className="col-span-2 text-left">Total</span>
                       <span className="text-right">
                         {Object.values(commitments).reduce((sum, value) => sum + (value || 0), 0)}%
                       </span>
