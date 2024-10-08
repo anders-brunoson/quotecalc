@@ -12,12 +12,20 @@ export const exportStateToJSON = (state) => {
     rateCardName,
     predefinedRoles,
     chunkOrder,
-    discount  // Add discount to the exported state
+    discount
   } = state;
+
+  // Ensure that roles include the alias field
+  const rolesWithAlias = roles.map(role => ({
+    id: role.id,
+    name: role.name,
+    code: role.code,
+    alias: role.alias || '' // Include alias, defaulting to an empty string if not set
+  }));
 
   const exportData = {
     chunks,
-    roles,
+    roles: rolesWithAlias, // Use the updated roles array
     commitments,
     hourlyRates,
     hourlyCosts,
@@ -26,7 +34,7 @@ export const exportStateToJSON = (state) => {
     rateCardName,
     predefinedRoles,
     chunkOrder,
-    discount  // Include discount in the exported data
+    discount
   };
 
   return JSON.stringify(exportData, null, 2);
@@ -40,7 +48,7 @@ export const importStateFromJSON = (jsonString) => {
     const requiredKeys = [
       'chunks', 'roles', 'commitments', 'hourlyRates', 'hourlyCosts', 
       'workingDays', 'workingHours', 'rateCardName', 'predefinedRoles', 
-      'chunkOrder', 'discount'  // Add discount to the required keys
+      'chunkOrder', 'discount'
     ];
     const missingKeys = requiredKeys.filter(key => !(key in importedData));
     
@@ -48,7 +56,16 @@ export const importStateFromJSON = (jsonString) => {
       throw new Error(`Invalid JSON structure. Missing keys: ${missingKeys.join(', ')}`);
     }
 
-    return importedData;
+    // Ensure that imported roles have the alias field
+    const rolesWithAlias = importedData.roles.map(role => ({
+      ...role,
+      alias: role.alias || '' // Ensure alias exists, defaulting to an empty string if not present
+    }));
+
+    return {
+      ...importedData,
+      roles: rolesWithAlias // Replace the roles array with the updated one
+    };
   } catch (error) {
     console.error('Error parsing JSON:', error);
     throw error;
