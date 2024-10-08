@@ -926,7 +926,7 @@ const QuoteCalculator = () => {
             <div className="flex justify-between items-center">
               <span className="text-xl font-bold">Total Summary</span>
               <div className="text-right">
-                <div className="text-2xl font-bold">{calculateTotalSummary().discountedTotal.toLocaleString()} SEK</div>
+                <div className="text-2xl font-bold">{Math.round(calculateTotalSummary().discountedTotal).toLocaleString()} SEK</div>
                 <div className="text-sm">
                   GM: {calculateGrossMargin(calculateTotalSummary()).monetary.toLocaleString()} SEK 
                   ({calculateGrossMargin(calculateTotalSummary()).percentage.toFixed(2)}%)
@@ -1001,7 +1001,7 @@ const QuoteCalculator = () => {
               <div className="grid grid-cols-7 text-sm italic text-red-600 font-semibold">
                 <span className="col-span-5 text-left">Discount ({discount}%)</span>
                 <span className="col-span-2 text-right">
-                  -{calculateTotalSummary().discountAmount.toLocaleString()} SEK
+                  -{Math.round(calculateTotalSummary().discountAmount).toLocaleString()} SEK
                 </span>
               </div>
               <div className="grid grid-cols-7 font-bold text-lg">
