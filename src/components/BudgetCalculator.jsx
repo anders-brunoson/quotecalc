@@ -25,6 +25,7 @@ import {
 import CSVUpload from './CSVUpload';
 import RateCardCSVUpload from './RateCardCSVUpload';
 import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
+import SearchableRoleSelect from './SearchableRoleSelect';
 
 const QuoteCalculator = () => {
   const [chunks, setChunks] = useState(['2025 H1', '2025 H2']);
@@ -841,22 +842,12 @@ const QuoteCalculator = () => {
                           >
                             <GripVertical className="h-5 w-5 text-gray-400" />
                           </div>
-                          <Select
-                            key={`${selectorKey}-${role.id}`}
+                          <SearchableRoleSelect
+                            roles={sortedPredefinedRoles}
                             value={role.name}
-                            onValueChange={(value) => handleRoleChange(role.id, value)}
-                          >
-                            <SelectTrigger className="w-[270px]"> {/* Increased width by 50% */}
-                              <SelectValue placeholder="Select a role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {sortedPredefinedRoles.map((predefinedRole) => (
-                                <SelectItem key={`${predefinedRole.name}-${predefinedRole.code}`} value={predefinedRole.name}>
-                                  {predefinedRole.name} ({predefinedRole.code})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            onChange={(value) => handleRoleChange(role.id, value)}
+                          />
+                          
                           <span className="ml-4 text-sm text-gray-500">Role Code: {role.code}</span>
                           <Button 
                             variant="ghost" 
