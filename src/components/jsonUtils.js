@@ -2,6 +2,8 @@
 
 export const exportStateToJSON = (state) => {
   const {
+    simulationName,
+    simulationDescription,
     chunks,
     roles,
     commitments,
@@ -24,6 +26,8 @@ export const exportStateToJSON = (state) => {
   }));
 
   const exportData = {
+    simulationName,
+    simulationDescription,
     chunks,
     roles: rolesWithAlias, // Use the updated roles array
     commitments,
@@ -63,6 +67,8 @@ export const importStateFromJSON = (jsonString) => {
     }));
 
     return {
+      simulationName: importedData.simulationName || '',
+      simulationDescription: importedData.simulationDescription || '',
       ...importedData,
       roles: rolesWithAlias // Replace the roles array with the updated one
     };
