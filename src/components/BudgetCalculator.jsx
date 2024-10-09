@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download, Upload } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,8 @@ import SearchableRoleSelect from './SearchableRoleSelect';
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
 const QuoteCalculator = () => {
+  const [simulationName, setSimulationName] = useState('');
+  const [simulationDescription, setSimulationDescription] = useState('');
   const [chunks, setChunks] = useState(['2025 H1', '2025 H2']);
   const [commitments, setCommitments] = useState({});
   const [rateCardName, setRateCardName] = useState('');  
@@ -70,30 +73,38 @@ const QuoteCalculator = () => {
     { name: 'QA Engineer', hourlyRate: 1000, hourlyCost: 700, code: '303' },
   ]);
 
-  const handleExportJSON = () => {
-    const stateToExport = {
-      chunks,
-      roles,
-      commitments,
-      hourlyRates,
-      hourlyCosts,
-      workingDays,
-      workingHours,
-      rateCardName,
-      predefinedRoles,
-      chunkOrder,
-      discount  // Include discount in the exported state
-    };
-    const jsonData = exportStateToJSON(stateToExport);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'budget_calculator_state.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+const handleExportJSON = () => {
+  const stateToExport = {
+    simulationName,
+    simulationDescription,
+    chunks,
+    roles,
+    commitments,
+    hourlyRates,
+    hourlyCosts,
+    workingDays,
+    workingHours,
+    rateCardName,
+    predefinedRoles,
+    chunkOrder,
+    discount
   };
+  const jsonData = exportStateToJSON(stateToExport);
+  const blob = new Blob([jsonData], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  
+  // Use simulationName for the file name, or a default if it's empty
+  const fileName = simulationName.trim() 
+    ? `${simulationName.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase()}_quote_simulator.json`
+    : 'quote_simulator_state.json';
+  
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
   const handleImportJSON = (event) => {
     const file = event.target.files[0];
@@ -102,6 +113,8 @@ const QuoteCalculator = () => {
       reader.onload = (e) => {
         try {
           const importedState = importStateFromJSON(e.target.result);
+          setSimulationName(importedState.simulationName || '');
+          setSimulationDescription(importedState.simulationDescription || '');
           setChunks(importedState.chunks);
           setRoles(importedState.roles);
           setCommitments(importedState.commitments);
@@ -112,10 +125,9 @@ const QuoteCalculator = () => {
           setRateCardName(importedState.rateCardName);
           setPredefinedRoles(importedState.predefinedRoles);
           setChunkOrder(importedState.chunkOrder);
-          setDiscount(importedState.discount);  // Set the imported discount
+          setDiscount(importedState.discount);
           setActiveTab(importedState.chunks[0]);
           setSelectedChunks([]);
-          // Force re-render of role selectors
           setSelectorKey(prevKey => prevKey + 1);
         } catch (error) {
           console.error('Error importing JSON:', error);
@@ -716,6 +728,36 @@ const QuoteCalculator = () => {
           <Moon className="h-4 w-4" />
         </div>
       </div>
+
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="simulationName" className="block text-sm font-medium mb-1 text-left">
+                Simulation/Quote Name
+              </label>
+              <Input
+                id="simulationName"
+                value={simulationName}
+                onChange={(e) => setSimulationName(e.target.value)}
+                placeholder="Enter simulation/quote name"
+              />
+            </div>
+            <div>
+              <label htmlFor="simulationDescription" className="block text-sm font-medium mb-1 text-left">
+                Description
+              </label>
+              <Textarea
+                id="simulationDescription"
+                value={simulationDescription}
+                onChange={(e) => setSimulationDescription(e.target.value)}
+                placeholder="Enter simulation/quote description"
+                rows={3}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       <div className="mb-4 flex flex-wrap gap-2">
         <Button onClick={handleAddRole} className="flex items-center">
