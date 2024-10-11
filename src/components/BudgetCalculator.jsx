@@ -1060,9 +1060,13 @@ const handleExportJSON = () => {
 
         {chunkOrder.map((period, index) => {
           const { total, breakdown, hours, commitments, grossMargin, totalGrossMargin, totalGrossMarginPercentage } = budget[period] || {};
+          const isSelected = selectedChunks.includes(period);
           return (
-            <Card key={index}>
-              <CardHeader className="text-xl font-bold capitalize">
+            <Card 
+              key={index} 
+              className={`transition-all duration-200 ${isSelected ? 'border-blue-500 border-2' : ''}`}
+            >
+              <CardHeader className="text-xl font-bold">
                 <div className="flex justify-between items-center">
                   <span>{period}</span>
                   <div className="text-right">
