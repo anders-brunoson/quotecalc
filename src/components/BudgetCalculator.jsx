@@ -41,8 +41,9 @@ const QuoteCalculator = () => {
   const [workingDays, setWorkingDays] = useState({});
   const [workingHours, setWorkingHours] = useState({});
   const [budget, setBudget] = useState({});
-  const [newChunkName, setNewChunkName] = useState('');
+  const [chunkTemplate, setChunkTemplate] = useState('custom');
   const [isAddingChunk, setIsAddingChunk] = useState(false);
+  const [newChunkName, setNewChunkName] = useState('');
   const [selectedChunks, setSelectedChunks] = useState([]);
   const [activeTab, setActiveTab] = useState('');
   const [draggedItem, setDraggedItem] = useState(null);
@@ -445,22 +446,73 @@ const handleExportJSON = () => {
     setIsAddingChunk(true);
   };
 
-  const confirmAddChunk = () => {
-    if (newChunkName && !chunks.includes(newChunkName.toLowerCase())) {
-      const chunkToAdd = newChunkName.toLowerCase();
-      setChunks(prev => [...prev, chunkToAdd]);
-      setChunkOrder(prev => [...prev, chunkToAdd]);
-      setWorkingDays(prev => ({ ...prev, [chunkToAdd]: 21 }));
-      setCommitments(prev => {
-        const newCommitments = { ...prev };
-        Object.keys(newCommitments).forEach(roleId => {
-          newCommitments[roleId][chunkToAdd] = 50;
-        });
-        return newCommitments;
-      });
-      setNewChunkName('');
-      setIsAddingChunk(false);
+  const generateChunks = (template) => {
+    const currentYear = new Date().getFullYear();
+    switch (template) {
+      case 'quarters':
+        return {
+          chunks: ['Q1', 'Q2', 'Q3', 'Q4'],
+          workingDays: 56
+        };
+      case 'years':
+        return {
+          chunks: [currentYear.toString(), (currentYear + 1).toString(), (currentYear + 2).toString()],
+          workingDays: 224
+        };
+      case 'months':
+        return {
+          chunks: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          workingDays: 21
+        };
+      case 'sprints':
+        return {
+          chunks: ['Sprint 1', 'Sprint 2', 'Sprint 3'],
+          workingDays: 15
+        };
+      default:
+        return {
+          chunks: [],
+          workingDays: 21 // Default for custom chunks
+        };
     }
+  };
+
+  const confirmAddChunk = () => {
+    let chunksToAdd = [];
+    let templateWorkingDays = 21; // Default for custom chunks
+
+    if (chunkTemplate === 'custom') {
+      if (newChunkName && !chunks.includes(newChunkName.toLowerCase())) {
+        chunksToAdd = [newChunkName.toLowerCase()];
+      }
+    } else {
+      const { chunks: generatedChunks, workingDays } = generateChunks(chunkTemplate);
+      chunksToAdd = generatedChunks.filter(chunk => !chunks.includes(chunk.toLowerCase()));
+      templateWorkingDays = workingDays;
+    }
+
+    if (chunksToAdd.length > 0) {
+      setChunks(prev => [...prev, ...chunksToAdd]);
+      setChunkOrder(prev => [...prev, ...chunksToAdd]);
+      
+      const newWorkingDays = { ...workingDays };
+      const newCommitments = { ...commitments };
+      
+      chunksToAdd.forEach(chunk => {
+        newWorkingDays[chunk] = templateWorkingDays;
+        Object.keys(newCommitments).forEach(roleId => {
+          if (!newCommitments[roleId]) newCommitments[roleId] = {};
+          newCommitments[roleId][chunk] = 50; // Default commitment
+        });
+      });
+
+      setWorkingDays(newWorkingDays);
+      setCommitments(newCommitments);
+    }
+
+    setNewChunkName('');
+    setIsAddingChunk(false);
+    setChunkTemplate('custom');
   };
 
   const handleRemoveChunk = () => {
@@ -729,7 +781,7 @@ const handleExportJSON = () => {
         </div>
       </div>
 
-      <Card className="mb-6">
+      <Card className="mb-6 w-2/5">
         <CardContent className="pt-6">
           <div className="space-y-4">
             <div>
@@ -764,7 +816,7 @@ const handleExportJSON = () => {
           <PlusCircle className="mr-2 h-4 w-4" /> Add Role
         </Button>
         <Button onClick={handleAddChunk} className="flex items-center">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Chunk
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Chunk(s)
         </Button>
         <Button 
           onClick={handleRemoveChunk} 
@@ -798,19 +850,55 @@ const handleExportJSON = () => {
 
       {rateCardName && (
         <div className="mb-4">
-          <h2 className="text-xl font-bold">Current Rate Card: {rateCardName}</h2>
+          <h2 className="text-xl font-bold text-left">Current Rate Card: {rateCardName}</h2>
         </div>
       )}      
 
       {isAddingChunk && (
-        <div className="mb-4 flex space-x-2">
-          <Input
-            value={newChunkName}
-            onChange={(e) => setNewChunkName(e.target.value)}
-            placeholder="Enter new chunk name"
-          />
-          <Button onClick={confirmAddChunk}>Confirm</Button>
-          <Button onClick={() => setIsAddingChunk(false)} variant="outline">Cancel</Button>
+        <div className="mb-4 space-y-4">
+          <div>
+            <label htmlFor="chunkTemplate" className="block text-sm font-medium mb-1 text-left">
+              Select Chunk Template:
+            </label>
+            <Select
+              id="chunkTemplate"
+              value={chunkTemplate}
+              onValueChange={setChunkTemplate}
+            >
+              <SelectTrigger className="w-1/5">
+                <SelectValue placeholder="Select a template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="custom">Custom</SelectItem>
+                <SelectItem value="quarters">Quarters (56 working days each)</SelectItem>
+                <SelectItem value="years">Years (224 working days each)</SelectItem>
+                <SelectItem value="months">Months (21 working days each)</SelectItem>
+                <SelectItem value="sprints">Sprints (15 working days each)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {chunkTemplate === 'custom' && (
+            <div>
+              <label htmlFor="newChunkName" className="block text-sm font-medium mb-1 w-1/5 text-left">
+                New Chunk Name:
+              </label>
+              <Input
+                id="newChunkName"
+                className="w-1/5"
+                value={newChunkName}
+                onChange={(e) => setNewChunkName(e.target.value)}
+                placeholder="Enter new chunk name"
+              />
+            </div>
+          )}
+          <div className="flex space-x-2">
+            <Button onClick={confirmAddChunk}>Confirm</Button>
+            <Button onClick={() => {
+              setIsAddingChunk(false);
+              setChunkTemplate('custom');
+              setNewChunkName('');
+            }} variant="outline">Cancel</Button>
+          </div>
         </div>
       )}
 
