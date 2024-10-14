@@ -33,7 +33,7 @@ const formatCurrency = (value) => Math.round(value).toLocaleString();
 const QuoteCalculator = () => {
   const [simulationName, setSimulationName] = useState('');
   const [simulationDescription, setSimulationDescription] = useState('');
-  const [chunks, setChunks] = useState(['2025 H1', '2025 H2']);
+  const [chunks, setChunks] = useState(['Dummy chunk 1 (remove, then add your own)','Dummy chunk 2']);
   const [commitments, setCommitments] = useState({});
   const [rateCardName, setRateCardName] = useState('');  
   const [hourlyRates, setHourlyRates] = useState({});
