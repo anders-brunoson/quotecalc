@@ -56,11 +56,7 @@ const QuoteCalculator = () => {
   const [discount, setDiscount] = useState(0);  
 
   const [roles, setRoles] = useState([
-    { id: '1', name: 'Systems Developer BE', code: '302', alias: '' },
-    { id: '2', name: 'Systems Developer FE', code: '302', alias: '' },
-    { id: '3', name: 'UX Designer', code: '200', alias: '' },
-    { id: '4', name: 'Digital Designer', code: '200', alias: '' },
-    { id: '5', name: 'Project Manager', code: '030', alias: '' }
+    { id: '1', name: 'Dummy role (remove, then add your lineup)', code: '303', alias: '' },
   ]);
 
   const [predefinedRoles, setPredefinedRoles] = useState([
