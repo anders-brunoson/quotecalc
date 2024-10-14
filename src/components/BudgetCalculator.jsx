@@ -990,9 +990,9 @@ const handleExportJSON = () => {
                           />
                           <span className="ml-2 text-sm text-gray-500">Role Code: {role.code}</span>
                           <Button 
-                            variant="ghost" 
+                            variant="destructive" 
                             size="icon"
-                            className="ml-auto" 
+                            className="ml-2" 
                             onClick={() => handleRemoveRole(role.id)}
                           >
                             <X className="h-4 w-4" />
