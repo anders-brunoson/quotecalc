@@ -992,7 +992,7 @@ const handleExportJSON = () => {
                           <Button 
                             variant="destructive" 
                             size="icon"
-                            className="ml-2" 
+                            className="ml-2 h-6 w-6" 
                             onClick={() => handleRemoveRole(role.id)}
                           >
                             <X className="h-4 w-4" />
