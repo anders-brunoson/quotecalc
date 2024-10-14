@@ -999,13 +999,14 @@ const handleExportJSON = () => {
                           </Button>
                         </div>
                         <div className="flex flex-wrap items-center gap-4 mt-2">
-                          <div className="flex-grow min-w-[200px]">
+                          <div className="flex-grow min-w-[200px] ">
                             <span className="text-sm">Commitment: {commitments[role.id]?.[chunk] || 0}%</span>
                             <Slider
                               value={[commitments[role.id]?.[chunk] || 0]}
                               max={100}
                               step={1}
                               onValueChange={(val) => handleCommitmentChange(role.id, chunk, val)}
+                              className="mt-2"
                             />
                           </div>
                           <div className="w-32">
@@ -1014,7 +1015,7 @@ const handleExportJSON = () => {
                               type="number"
                               value={hourlyRates[role.id] ?? ''}
                               onChange={(e) => handleHourlyRateChange(role.id, e.target.value)}
-                              className="mt-1"
+                              className="mt-1 text-center"
                             />
                           </div>
                           <div className="w-32">
@@ -1023,7 +1024,7 @@ const handleExportJSON = () => {
                               type="number"
                               value={hourlyCosts[role.id] ?? ''}
                               onChange={(e) => handleHourlyCostChange(role.id, e.target.value)}
-                              className="mt-1"
+                              className="mt-1 text-center"
                             />
                           </div>
                           <div className="w-32">
@@ -1032,7 +1033,7 @@ const handleExportJSON = () => {
                               type="number"
                               value={workingHours[role.id] ?? 8}
                               onChange={(e) => handleWorkingHoursChange(role.id, e.target.value)}
-                              className="mt-1"
+                              className="mt-1 text-center"
                               step="0.5"
                               min="0"
                             />
