@@ -755,7 +755,7 @@ const handleExportJSON = () => {
   };
 
   return (
-    <div className={`p-4 w-full ${darkMode ? 'dark' : ''}`}>
+    <div className={`p-4 w-full min-w-fit ${darkMode ? 'dark' : ''}`}>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Quote Simulator</h1>
         <div className="flex items-center space-x-2">
@@ -777,7 +777,7 @@ const handleExportJSON = () => {
         </div>
       </div>
 
-      <Card className="mb-6 w-2/5">
+      <Card className="mb-6 2xl:w-2/5">
         <CardContent className="pt-6">
           <div className="space-y-4">
             <div>
@@ -981,14 +981,6 @@ const handleExportJSON = () => {
                               onChange={(value) => handleRoleChange(role.id, value)}
                             />
                           </div>
-                          <Input
-                            type="text"
-                            value={role.alias}
-                            onChange={(e) => handleAliasChange(role.id, e.target.value)}
-                            placeholder="Alias"
-                            className="ml-2 w-20"
-                          />
-                          <span className="ml-2 text-sm text-gray-500">Role Code: {role.code}</span>
                           <Button 
                             variant="destructive" 
                             size="icon"
@@ -999,16 +991,6 @@ const handleExportJSON = () => {
                           </Button>
                         </div>
                         <div className="flex flex-wrap items-center gap-4 mt-2">
-                          <div className="flex-grow min-w-[200px] ">
-                            <span className="text-sm">Commitment: {commitments[role.id]?.[chunk] || 0}%</span>
-                            <Slider
-                              value={[commitments[role.id]?.[chunk] || 0]}
-                              max={100}
-                              step={1}
-                              onValueChange={(val) => handleCommitmentChange(role.id, chunk, val)}
-                              className="mt-2"
-                            />
-                          </div>
                           <div className="w-32">
                             <span className="text-sm">Hourly Rate</span>
                             <Input
@@ -1038,6 +1020,29 @@ const handleExportJSON = () => {
                               min="0"
                             />
                           </div>
+                          <div className="w-32">
+                            <span className="text-sm">Alias</span>
+                            <Input
+                              type="text"
+                              value={role.alias}
+                              onChange={(e) => handleAliasChange(role.id, e.target.value)}
+                              placeholder="Alias"
+                              className="mt-1 text-center"
+                            />
+                          </div>
+                          <div className="flex-grow min-w-[200px] ">
+                            <span className="text-sm">Commitment: {commitments[role.id]?.[chunk] || 0}%</span>
+                            <Slider
+                              value={[commitments[role.id]?.[chunk] || 0]}
+                              max={100}
+                              step={1}
+                              onValueChange={(val) => handleCommitmentChange(role.id, chunk, val)}
+                              className="mt-2"
+                            />
+                          </div>
+{/*
+                          <span className="ml-2 text-sm text-gray-500">Role Code: {role.code}</span>
+*/}
                         </div>
                       </div>
                     ))}
