@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download, Upload } from 'lucide-react';
+import { PlusCircle, X, GripVertical, Moon, Sun, Info, Download, Upload, Eye } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +27,7 @@ import CSVUpload from './CSVUpload';
 import RateCardCSVUpload from './RateCardCSVUpload';
 import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
 import SearchableRoleSelect from './SearchableRoleSelect';
+import RateCardModal from './RateCardModal';
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -36,6 +37,7 @@ const QuoteCalculator = () => {
   const [chunks, setChunks] = useState(['Dummy chunk 1 (remove, then add your own)','Dummy chunk 2']);
   const [commitments, setCommitments] = useState({});
   const [rateCardName, setRateCardName] = useState('');  
+  const [isRateCardModalOpen, setIsRateCardModalOpen] = useState(false);  
   const [hourlyRates, setHourlyRates] = useState({});
   const [hourlyCosts, setHourlyCosts] = useState({});
   const [workingDays, setWorkingDays] = useState({});
@@ -182,6 +184,9 @@ const handleExportJSON = () => {
       console.log("Updated roles:", updatedRoles);
       return updatedRoles;
     });
+
+    // Open the rate card modal after uploading
+    setIsRateCardModalOpen(true);
   };
 
   useEffect(() => {
@@ -829,6 +834,7 @@ const handleExportJSON = () => {
         <CSVUpload onDataUploaded={handleDataUploaded} />
 */}        
         <RateCardCSVUpload onRateCardUploaded={handleRateCardUploaded} />
+
         <Button onClick={handleExportJSON} className="flex items-center">
           <Download className="mr-2 h-4 w-4" /> Export JSON
         </Button>
@@ -845,10 +851,19 @@ const handleExportJSON = () => {
       </div>
 
       {rateCardName && (
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-left">Current Rate Card: {rateCardName}</h2>
+        <div className="mb-4 flex items-center">
+          <h2 className="text-xl font-bold">Current Rate Card: {rateCardName}</h2>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => setIsRateCardModalOpen(true)} 
+            className="ml-2"
+            title="View Rate Card"
+          >
+            <Eye className="h-5 w-5" />
+          </Button>
         </div>
-      )}      
+      )}   
 
       {isAddingChunk && (
         <div className="mb-4 space-y-4">
@@ -1230,6 +1245,12 @@ const handleExportJSON = () => {
       </div>
 
       <InfoModal />
+      <RateCardModal
+        isOpen={isRateCardModalOpen}
+        onClose={() => setIsRateCardModalOpen(false)}
+        rateCardName={rateCardName}
+        predefinedRoles={predefinedRoles}
+      />      
       
     </div>
   );
