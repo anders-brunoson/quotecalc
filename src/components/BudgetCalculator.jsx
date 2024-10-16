@@ -1173,7 +1173,7 @@ const handleExportJSON = () => {
             >
               <CardHeader className="text-xl font-bold">
                 <div className="flex justify-between items-center">
-                  <span>{period}</span>
+                  <span>{capitalize(period)}</span>
                   <div className="text-right">
                     <div className="text-2xl font-bold">{formatCurrency(total)} SEK</div>
                     <div className="text-sm font-normal">
