@@ -29,6 +29,8 @@ import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
 import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 
+const VERSION = "0.9.0";
+
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
 const QuoteCalculator = () => {
@@ -55,7 +57,8 @@ const QuoteCalculator = () => {
   const editInputRef = useRef(null);
   const [chunkOrder, setChunkOrder] = React.useState([]);
   const [selectorKey, setSelectorKey] = useState(0);
-  const [discount, setDiscount] = useState(0);  
+  const [discount, setDiscount] = useState(0);
+  const [version, setVersion] = useState(VERSION);
 
   const [roles, setRoles] = useState([
     { id: '1', name: 'Dummy role (remove, then add your lineup)', code: '303', alias: '' },
@@ -72,38 +75,39 @@ const QuoteCalculator = () => {
     { name: 'QA Engineer', hourlyRate: 1000, hourlyCost: 700, code: '303' },
   ]);
 
-const handleExportJSON = () => {
-  const stateToExport = {
-    simulationName,
-    simulationDescription,
-    chunks,
-    roles,
-    commitments,
-    hourlyRates,
-    hourlyCosts,
-    workingDays,
-    workingHours,
-    rateCardName,
-    predefinedRoles,
-    chunkOrder,
-    discount
+  const handleExportJSON = () => {
+    const stateToExport = {
+      version,
+      simulationName,
+      simulationDescription,
+      chunks,
+      roles,
+      commitments,
+      hourlyRates,
+      hourlyCosts,
+      workingDays,
+      workingHours,
+      rateCardName,
+      predefinedRoles,
+      chunkOrder,
+      discount
+    };
+    const jsonData = exportStateToJSON(stateToExport);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Use simulationName for the file name, or a default if it's empty
+    const fileName = simulationName.trim() 
+      ? `${simulationName.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase()}_quote_simulator.json`
+      : 'quote_simulator_state.json';
+    
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
-  const jsonData = exportStateToJSON(stateToExport);
-  const blob = new Blob([jsonData], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  
-  // Use simulationName for the file name, or a default if it's empty
-  const fileName = simulationName.trim() 
-    ? `${simulationName.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase()}_quote_simulator.json`
-    : 'quote_simulator_state.json';
-  
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
 
   const handleImportJSON = (event) => {
     const file = event.target.files[0];
@@ -112,6 +116,8 @@ const handleExportJSON = () => {
       reader.onload = (e) => {
         try {
           const importedState = importStateFromJSON(e.target.result);
+          
+          setVersion(importedState.version || VERSION);
           setSimulationName(importedState.simulationName || '');
           setSimulationDescription(importedState.simulationDescription || '');
           setChunks(importedState.chunks);
@@ -764,6 +770,7 @@ const handleExportJSON = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Quote Simulator</h1>
         <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-500">v{version}</span>
           <Button
             variant="ghost"
             size="icon"
