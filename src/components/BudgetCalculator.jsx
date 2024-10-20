@@ -29,7 +29,7 @@ import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
 import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 
-const VERSION = "0.9.0";
+const VERSION = "0.9.1";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
