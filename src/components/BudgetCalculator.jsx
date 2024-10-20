@@ -921,17 +921,17 @@ const QuoteCalculator = () => {
       )}
 
       <div className="flex flex-col xl:flex-row gap-6">
-      <div className="xl:w-2/5">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="mb-6 bg-gray-100 p-1 rounded-lg flex flex-wrap min-h-fit">
-              <TabsList className="w-full flex flex-wrap justify-start bg-transparent">
+        <div className="xl:w-2/5">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="bg-gray-100 p-1 rounded-lg mb-6 h-auto max-h-40 overflow-y-auto">
+              <TabsList className="w-full flex flex-wrap justify-start bg-transparent !h-auto">
                 {chunks.map(chunk => (
                   <TabsTrigger 
                     key={chunk} 
                     value={chunk} 
                     onClick={(e) => handleChunkSelect(chunk, e)}
                     onDoubleClick={() => handleChunkDoubleClick(chunk)}
-                    className={`px-1 py-1 border-b-2 ${
+                    className={`px-1 py-1 m-1 border-b-2 ${
                       selectedChunks.includes(chunk) 
                         ? 'border-blue-500 bg-blue-100' 
                         : 'border-transparent hover:border-gray-300'
@@ -961,14 +961,13 @@ const QuoteCalculator = () => {
               <h3 className="font-semibold">Selected Chunk(s):</h3>
               <p>{selectedChunks.map(capitalize).join(', ') || 'None'}</p>
             </div>
-
             {selectedChunks.length > 0 && (
             <>
               {chunks.map(chunk => (
                 <TabsContent key={chunk} value={chunk}>
-                    <div className="mt-8 mb-8 flex justify-between items-center">
-                      <label className="block text-sm font-medium">
-                        Working days in {capitalize(chunk)} (CHECK MANUALLY!):
+                  <div className="mt-8 mb-8 flex justify-between items-center">
+                    <label className="block text-sm font-medium">
+                      Working days in {capitalize(chunk)} (CHECK MANUALLY!):
                         <Input
                           type="number"
                           value={workingDays[chunk] ?? ''}
