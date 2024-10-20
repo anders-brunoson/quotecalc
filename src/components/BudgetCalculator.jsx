@@ -29,7 +29,7 @@ import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
 import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 
-const VERSION = "0.9.1";
+const VERSION = "0.9.2";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -883,7 +883,7 @@ const QuoteCalculator = () => {
               value={chunkTemplate}
               onValueChange={setChunkTemplate}
             >
-              <SelectTrigger className="w-1/5">
+              <SelectTrigger className="xl:w-1/5 lg:w-2/5">
                 <SelectValue placeholder="Select a template" />
               </SelectTrigger>
               <SelectContent>
@@ -902,7 +902,7 @@ const QuoteCalculator = () => {
               </label>
               <Input
                 id="newChunkName"
-                className="w-1/5"
+                className="xl:w-1/5 lg:w-2/5"
                 value={newChunkName}
                 onChange={(e) => setNewChunkName(e.target.value)}
                 placeholder="Enter new chunk name"
