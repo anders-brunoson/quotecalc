@@ -58,6 +58,7 @@ const QuoteCalculator = () => {
   const [chunkOrder, setChunkOrder] = React.useState([]);
   const [selectorKey, setSelectorKey] = useState(0);
   const [discount, setDiscount] = useState(0);
+  const [roleDiscounts, setRoleDiscounts] = useState({});
   const [version, setVersion] = useState(VERSION);
 
   const [roles, setRoles] = useState([
@@ -631,6 +632,49 @@ const QuoteCalculator = () => {
     }
   }, [selectedChunks]);
 
+  const handleDecreaseRate = (roleId, chunk) => {
+  setRoleDiscounts(prev => {
+    const currentDiscounts = prev[chunk] || {};
+    const currentDiscount = currentDiscounts[roleId] || 0;
+    const newDiscount = currentDiscount + 1;
+    
+    return {
+      ...prev,
+      [chunk]: {
+        ...currentDiscounts,
+        [roleId]: newDiscount
+      }
+    };
+  });
+};
+
+const handleIncreaseRate = (roleId, chunk) => {
+  setRoleDiscounts(prev => {
+    const currentDiscounts = prev[chunk] || {};
+    const currentDiscount = currentDiscounts[roleId] || 0;
+    const newDiscount = Math.max(0, currentDiscount - 1);
+    
+    // If discount becomes 0, remove the entry
+    const newChunkDiscounts = { ...currentDiscounts };
+    if (newDiscount === 0) {
+      delete newChunkDiscounts[roleId];
+    } else {
+      newChunkDiscounts[roleId] = newDiscount;
+    }
+    
+    // If chunk has no discounts, remove it entirely
+    if (Object.keys(newChunkDiscounts).length === 0) {
+      const { [chunk]: _, ...rest } = prev;
+      return rest;
+    }
+    
+    return {
+      ...prev,
+      [chunk]: newChunkDiscounts
+    };
+  });
+};
+
   const handleDownloadCSV = () => {
     const csvContent = generateCSV(budget, roles, chunks, commitments, hourlyRates, workingDays);
     downloadCSV(csvContent);
@@ -1191,56 +1235,68 @@ const QuoteCalculator = () => {
               {breakdown && hours && commitments && grossMargin && (
                 <CardContent>
                   <div className="space-y-2 text-sm">
-                    <div className="grid grid-cols-8 font-medium">
-                      <span className="col-span-2 text-left">Role</span>
-                      <span className="text-right">Commitment</span>
-                      <span className="text-right">Hours</span>
-                      <span className="text-right">Hourly Rate</span>
-                      <span className="text-right">GM</span>
-                      <span className="text-right">GM %</span>
-                      <span className="text-right">Amount</span>
-                    </div>
-                    {roles.map(role => {
-                      const roleRevenue = breakdown[role.id] || 0;
-                      const roleHours = hours[role.id] || 0;
-                      const roleCost = roleHours * (hourlyCosts[role.id] || 0);
-                      const roleGrossMargin = roleRevenue - roleCost;
-                      const roleGrossMarginPercentage = roleRevenue > 0 ? (roleGrossMargin / roleRevenue) * 100 : 0;
-                      return (
-                        <div key={role.id} className="grid grid-cols-8">
-                          <span className="col-span-2 truncate text-left" title={`${role.name}${role.alias ? ` (${role.alias})` : ''}`}>
-                            {role.name}{role.alias ? ` (${role.alias})` : ''}
-                          </span>
-                          <span className="text-right">{commitments[role.id] || 0}%</span>
-                          <span className="text-right">{hours[role.id] || 0}</span>
-                          <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
-                          <span className="text-right">{formatCurrency(roleGrossMargin)} SEK</span>
-                          <span className="text-right">{roleGrossMarginPercentage.toFixed(2)}%</span>
-                          <span className="text-right">{formatCurrency(breakdown[role.id] || 0)} SEK</span>
-                        </div>
-                      );
-                    })}
-                    <div className="grid grid-cols-8 font-bold pt-2 border-t">
-                      <span className="col-span-2 text-left">Total</span>
-                      <span className="text-right">
-                        {Object.values(commitments).reduce((sum, value) => sum + (value || 0), 0)}%
-                      </span>
-                      <span className="text-right">
-                        {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0)}
-                      </span>
-                      <span className="text-right">
-                        {calculateAverageHourlyRate({ hours, breakdown })} SEK
-                      </span>
-                      <span className="text-right">
-                        {formatCurrency(totalGrossMargin)} SEK
-                      </span>
-                      <span className="text-right">
-                        {totalGrossMarginPercentage?.toFixed(2)}%
-                      </span>
-                      <span className="text-right">
-                        {formatCurrency(total)} SEK
-                      </span>
-                    </div>
+<div className="grid grid-cols-8 font-medium">
+  <span className="col-span-2 text-left">Role</span>
+  <span className="text-right">Commitment</span>
+  <span className="text-right">Total Hours</span>
+  <span className="text-right">Hourly Rate</span>
+  <span className="text-right">GM</span>
+  <span className="text-right">GM %</span>
+  <span className="text-right">Amount</span>
+</div>
+
+{roles.map(role => {
+  const roleRevenue = breakdown[role.id] || 0;
+  const roleHours = hours[role.id] || 0;
+  const roleCost = roleHours * (hourlyCosts[role.id] || 0);
+  const roleGrossMargin = roleRevenue - roleCost;
+  const roleGrossMarginPercentage = roleRevenue > 0 ? (roleGrossMargin / roleRevenue) * 100 : 0;
+  const discount = roleDiscounts[period]?.[role.id] || 0;  // Changed from chunk to period
+  
+  return (
+    <div key={role.id} className="grid grid-cols-8">
+      <span className="col-span-2 truncate text-left" title={`${role.name}${role.alias ? ` (${role.alias})` : ''}`}>
+        {role.name}{role.alias ? ` (${role.alias})` : ''}
+      </span>
+      <span className="text-right">{commitments[role.id] || 0}%</span>
+      <span className="text-right">{hours[role.id] || 0}</span>
+      
+      {/* Hourly Rate cell with +/- controls */}
+      <div className="flex items-center justify-end gap-1">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-4 w-4 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 -mr-1"
+          title="Decrease rate by 1 SEK"
+          onClick={() => handleDecreaseRate(role.id, period)}  // Changed from chunk to period
+        >
+          <span className="text-xs font-bold">−</span>
+        </Button>
+        <span className="min-w-[70px] px-1 text-right">
+          {hourlyRates[role.id]} SEK
+          {discount > 0 && (
+            <span className="text-xs text-red-600 ml-1">
+              (-{((discount / hourlyRates[role.id]) * 100).toFixed(1)}%)
+            </span>
+          )}
+        </span>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-4 w-4 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 -ml-1"
+          title="Increase rate by 1 SEK"
+          onClick={() => handleIncreaseRate(role.id, period)}  // Changed from chunk to period
+          disabled={!discount}
+        >
+          <span className="text-xs font-bold">+</span>
+        </Button>
+      </div>
+      <span className="text-right">{formatCurrency(roleGrossMargin)} SEK</span>
+      <span className="text-right">{roleGrossMarginPercentage.toFixed(2)}%</span>
+      <span className="text-right">{formatCurrency(roleRevenue)} SEK</span>
+    </div>
+  );
+})}
                   </div>
                 </CardContent>
               )}
