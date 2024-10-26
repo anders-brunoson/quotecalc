@@ -61,6 +61,10 @@ const QuoteCalculator = () => {
   const [roleDiscounts, setRoleDiscounts] = useState({});
   const [version, setVersion] = useState(VERSION);
 
+  const repeatTimer = useRef(null);
+  const repeatInterval = useRef(null);
+  const [isHolding, setIsHolding] = useState(false);
+
   const [roles, setRoles] = useState([
     { id: '1', name: 'Dummy role (remove, then add your lineup)', code: '303', alias: '' },
   ]);
@@ -677,6 +681,35 @@ const QuoteCalculator = () => {
     });
   };
 
+  // Add new handlers for mouse down events
+  const handleMouseDown = (handler, roleId, chunk) => {
+    // Execute the action immediately
+    handler(roleId, chunk);
+    
+    // Set up the hold-to-repeat functionality
+    setIsHolding(true);
+    
+    // Start a timer for the initial delay
+    repeatTimer.current = setTimeout(() => {
+      // Start repeating the action
+      repeatInterval.current = setInterval(() => {
+        handler(roleId, chunk);
+      }, 50); // Repeat every 50ms for smooth operation
+    }, 400); // Initial delay of 400ms before rapid repeat starts
+  };
+
+  // Add new handler for mouse up/leave events
+  const handleMouseUp = () => {
+    cleanupTimers();
+  };
+
+  // Clean up timers when component unmounts
+  useEffect(() => {
+    return () => {
+      cleanupTimers();
+    };
+  }, []);
+
   const handleDownloadCSV = () => {
     const csvContent = generateCSV(budget, roles, chunks, commitments, hourlyRates, workingDays);
     downloadCSV(csvContent);
@@ -809,6 +842,18 @@ const QuoteCalculator = () => {
       monetary: grossMargin,
       percentage: grossMarginPercentage
     };
+  };
+
+  const cleanupTimers = () => {
+    if (repeatTimer.current) {
+      clearTimeout(repeatTimer.current);
+      repeatTimer.current = null;
+    }
+    if (repeatInterval.current) {
+      clearInterval(repeatInterval.current);
+      repeatInterval.current = null;
+    }
+    setIsHolding(false);
   };
 
   return (
@@ -1241,8 +1286,8 @@ const QuoteCalculator = () => {
   <span className="col-span-2 text-left">Role</span>
   <span className="text-right">Commitment</span>
   <span className="text-right">Total Hours</span>
-  <span className="text-right">Hourly Rate</span>
-  <span className="text-right">Discounted Rate</span>
+  <span className="text-right">Rate/h</span>
+  <span className="text-right">Disc Rate/h</span>
   <span className="text-right">GM</span>
   <span className="text-right">GM %</span>
   <span className="text-right">Amount</span>
@@ -1268,30 +1313,39 @@ const QuoteCalculator = () => {
       <span className="text-right">{hours[role.id] || 0}</span>
       
       {/* Hourly Rate cell with +/- controls */}
-      <div className="flex items-right justify-end gap-2">
-        <div className="inline-flex items-right">
+      <span className="text-right min-w-[90px] inline-flex items-center justify-end gap-0 group">
+        <div className="inline-flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+          {discount > 0 && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-4 w-4 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+              title="Increase rate by 1 SEK"
+              onMouseDown={() => handleMouseDown(handleIncreaseRate, role.id, period)}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={() => handleMouseDown(handleIncreaseRate, role.id, period)}
+              onTouchEnd={handleMouseUp}
+            >
+              <span className="text-xs font-bold">+</span>
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-4 w-4 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 -mr-1"
+            className="h-4 w-4 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
             title="Decrease rate by 1 SEK"
-            onClick={() => handleDecreaseRate(role.id, period)}
+            onMouseDown={() => handleMouseDown(handleDecreaseRate, role.id, period)}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchStart={() => handleMouseDown(handleDecreaseRate, role.id, period)}
+            onTouchEnd={handleMouseUp}
           >
             <span className="text-xs font-bold">−</span>
           </Button>
-          <span className="text-right min-w-[70px] px-1">{originalRate} SEK</span>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-4 w-4 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 -ml-1"
-            title="Increase rate by 1 SEK"
-            onClick={() => handleIncreaseRate(role.id, period)}
-            disabled={!discount}
-          >
-            <span className="text-xs font-bold">+</span>
-          </Button>
         </div>
-      </div>
+        <span className="px-1">{originalRate} SEK</span>
+      </span>
 
       {/* Effective Rate Cell */}
       <span className="text-right">
@@ -1307,6 +1361,29 @@ const QuoteCalculator = () => {
     </div>
   );
 })}
+
+                    <div className="grid grid-cols-9 font-bold pt-2 border-t">
+                      <span className="col-span-2 text-left">Total</span>
+                      <span className="text-right">
+                        {Object.values(commitments).reduce((sum, value) => sum + (value || 0), 0)}%
+                      </span>
+                      <span className="text-right">
+                        {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0)}
+                      </span>
+                      <span className="text-right">
+                        {calculateAverageHourlyRate({ hours, breakdown })} SEK
+                      </span>
+                      <span className="col-span-2 text-right">
+                        {formatCurrency(totalGrossMargin)} SEK
+                      </span>
+                      <span className="text-right">
+                        {totalGrossMarginPercentage?.toFixed(2)}%
+                      </span>
+                      <span className="text-right">
+                        {formatCurrency(total)} SEK
+                      </span>
+                    </div>
+
                   </div>
                 </CardContent>
               )}
