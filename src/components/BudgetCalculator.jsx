@@ -28,8 +28,9 @@ import RateCardCSVUpload from './RateCardCSVUpload';
 import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
 import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
+import InlineChangelog from './InlineChangelog';
 
-const VERSION = "0.10.0";
+const VERSION = "0.10.1";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -887,57 +888,66 @@ const QuoteCalculator = () => {
 
   return (
     <div className={`p-4 w-full min-w-fit ${darkMode ? 'dark' : ''}`}>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Quote Simulator</h1>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-500">v{version}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsInfoOpen(true)}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <Info className="h-5 w-5" />
-          </Button>
-          <Sun className="h-4 w-4" />
-          <Switch
-            checked={darkMode}
-            onCheckedChange={toggleDarkMode}
-            aria-label="Toggle dark mode"
-          />
-          <Moon className="h-4 w-4" />
+      <div className="mb-6">
+        {/* Header row */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Quote Simulator</h1>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-500">v{version}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsInfoOpen(true)}
+              className="text-gray-500 hover:text-gray-700"
+              title="How to use"
+            >
+              <Info className="h-5 w-5" />
+            </Button>
+            <Sun className="h-4 w-4" />
+            <Switch
+              checked={darkMode}
+              onCheckedChange={toggleDarkMode}
+              aria-label="Toggle dark mode"
+            />
+            <Moon className="h-4 w-4" />
+          </div>
+        </div>
+
+        {/* Cards row */}
+        <div className="flex justify-between gap-6">
+          <Card className="2xl:w-2/5 xl:w-3/5 w-4/5">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="simulationName" className="block text-sm font-medium mb-1 text-left">
+                    Simulation/Quote Name
+                  </label>
+                  <Input
+                    id="simulationName"
+                    value={simulationName}
+                    onChange={(e) => setSimulationName(e.target.value)}
+                    placeholder="Enter simulation/quote name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="simulationDescription" className="block text-sm font-medium mb-1 text-left">
+                    Description
+                  </label>
+                  <Textarea
+                    id="simulationDescription"
+                    value={simulationDescription}
+                    onChange={(e) => setSimulationDescription(e.target.value)}
+                    placeholder="Enter simulation/quote description"
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <InlineChangelog />
         </div>
       </div>
-
-      <Card className="mb-6 2xl:w-2/5">
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="simulationName" className="block text-sm font-medium mb-1 text-left">
-                Simulation/Quote Name
-              </label>
-              <Input
-                id="simulationName"
-                value={simulationName}
-                onChange={(e) => setSimulationName(e.target.value)}
-                placeholder="Enter simulation/quote name"
-              />
-            </div>
-            <div>
-              <label htmlFor="simulationDescription" className="block text-sm font-medium mb-1 text-left">
-                Description
-              </label>
-              <Textarea
-                id="simulationDescription"
-                value={simulationDescription}
-                onChange={(e) => setSimulationDescription(e.target.value)}
-                placeholder="Enter simulation/quote description"
-                rows={3}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
       
       <div className="mb-4 flex flex-wrap gap-2">
         <Button onClick={handleAddRole} className="flex items-center">
