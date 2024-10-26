@@ -14,7 +14,8 @@ export const exportStateToJSON = (state) => {
     rateCardName,
     predefinedRoles,
     chunkOrder,
-    discount
+    discount,
+    roleDiscounts    // Add roleDiscounts to export
   } = state;
 
   // Ensure that roles include the alias field
@@ -29,7 +30,7 @@ export const exportStateToJSON = (state) => {
     simulationName,
     simulationDescription,
     chunks,
-    roles: rolesWithAlias, // Use the updated roles array
+    roles: rolesWithAlias,
     commitments,
     hourlyRates,
     hourlyCosts,
@@ -38,7 +39,8 @@ export const exportStateToJSON = (state) => {
     rateCardName,
     predefinedRoles,
     chunkOrder,
-    discount
+    discount,
+    roleDiscounts: roleDiscounts || {}  // Include roleDiscounts with default empty object
   };
 
   return JSON.stringify(exportData, null, 2);
@@ -52,10 +54,11 @@ export const importStateFromJSON = (jsonString) => {
     const requiredKeys = [
       'chunks', 'roles', 'commitments', 'hourlyRates', 'hourlyCosts', 
       'workingDays', 'workingHours', 'rateCardName', 'predefinedRoles', 
-      'chunkOrder', 'discount', 'roleDiscounts'
+      'chunkOrder', 'discount'
     ];
-    const missingKeys = requiredKeys.filter(key => !(key in importedData));
     
+    // Check for required keys
+    const missingKeys = requiredKeys.filter(key => !(key in importedData));
     if (missingKeys.length > 0) {
       throw new Error(`Invalid JSON structure. Missing keys: ${missingKeys.join(', ')}`);
     }
@@ -66,11 +69,15 @@ export const importStateFromJSON = (jsonString) => {
       alias: role.alias || '' // Ensure alias exists, defaulting to an empty string if not present
     }));
 
+    // Handle the roleDiscounts field, providing empty object as default if not present
+    const roleDiscounts = importedData.roleDiscounts || {};
+
     return {
       simulationName: importedData.simulationName || '',
       simulationDescription: importedData.simulationDescription || '',
       ...importedData,
-      roles: rolesWithAlias // Replace the roles array with the updated one
+      roles: rolesWithAlias,
+      roleDiscounts  // Include roleDiscounts in the returned data
     };
   } catch (error) {
     console.error('Error parsing JSON:', error);

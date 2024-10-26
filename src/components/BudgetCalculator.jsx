@@ -29,7 +29,7 @@ import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
 import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 
-const VERSION = "0.9.2";
+const VERSION = "0.10.2";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -64,6 +64,7 @@ const QuoteCalculator = () => {
   const repeatTimer = useRef(null);
   const repeatInterval = useRef(null);
   const [isHolding, setIsHolding] = useState(false);
+  const [activeButton, setActiveButton] = useState(null);
 
   const [roles, setRoles] = useState([
     { id: '1', name: 'Dummy role (remove, then add your lineup)', code: '303', alias: '' },
@@ -294,7 +295,7 @@ const QuoteCalculator = () => {
         const commitment = commitments[role.id]?.[chunk] || 0;
         const days = workingDays[chunk] || 0;
         const hoursPerDay = workingHours[role.id] === '' ? 0 : (workingHours[role.id] ?? 8);
-        const hours = Math.round(days * hoursPerDay * commitment / 100);
+        const hours = (days * hoursPerDay * commitment / 100);
         const roleDiscount = roleDiscounts[chunk]?.[role.id] || 0;
         const originalRate = hourlyRates[role.id] || 0;
         const effectiveRate = originalRate - roleDiscount;
@@ -692,27 +693,36 @@ const QuoteCalculator = () => {
 
   // Add new handlers for mouse down events
   const handleMouseDown = (handler, roleId, chunk) => {
+    // Clean up any existing timers first
+    cleanupTimers();
+    
     // Execute the action immediately
     handler(roleId, chunk);
     
     // Set up the hold-to-repeat functionality
     setIsHolding(true);
     
-    // Start a timer for the initial delay
     repeatTimer.current = setTimeout(() => {
-      // Start repeating the action
       repeatInterval.current = setInterval(() => {
-        handler(roleId, chunk);
-      }, 50); // Repeat every 50ms for smooth operation
-    }, 400); // Initial delay of 400ms before rapid repeat starts
+        if (handler === handleIncreaseRate) {
+          const currentDiscount = roleDiscounts[chunk]?.[roleId] || 0;
+          if (currentDiscount > 0) {
+            handler(roleId, chunk);
+          } else {
+            cleanupTimers();
+          }
+        } else {
+          handler(roleId, chunk);
+        }
+      }, 0);
+    }, 400);
   };
 
-  // Add new handler for mouse up/leave events
   const handleMouseUp = () => {
     cleanupTimers();
   };
 
-  // Clean up timers when component unmounts
+  // Clean up on component unmount
   useEffect(() => {
     return () => {
       cleanupTimers();
@@ -783,6 +793,7 @@ const QuoteCalculator = () => {
           <li>Double-click a chunk name in the tabs section to edit it.</li>
           <li>Use Ctrl/Cmd + click to select multiple chunks for bulk editing of commitment levels.</li>
           <li>Set working days for each chunk, and adjust commitment percentage, hourly rate, hourly cost, and working hours per day for each role.</li>
+          <li>In each chunk, hover over a role's rate to reveal minus/plus buttons for applying role-specific discounts. Hold the button to rapidly adjust the discount.</li>
           <li>Drag and drop roles to reorder them.</li>
           <li>View budget breakdowns for each chunk and the total, including gross margin calculations.</li>
           <li>Import a rate card CSV to update role rates and costs.</li>
@@ -1233,7 +1244,7 @@ const QuoteCalculator = () => {
                       {role.name}{role.alias ? ` (${role.alias})` : ''}
                     </span>
                     <span className="text-right">{totalSummary.commitments[role.id] || 0}%</span>
-                    <span className="text-right">{roleHours}</span>
+                    <span className="text-right">{roleHours.toFixed(1)}</span>
                     <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
                     <span className="text-right">{roleGrossMargin.toLocaleString()} SEK</span>
                     <span className="text-right">{(totalSummary.grossMargin[role.id] || 0).toFixed(2)}%</span>
@@ -1247,7 +1258,7 @@ const QuoteCalculator = () => {
                   {Object.values(calculateTotalSummary().commitments).reduce((sum, value) => sum + (value || 0), 0)}%
                 </span>
                 <span className="text-right">
-                  {Object.values(calculateTotalSummary().hours).reduce((sum, value) => sum + (value || 0), 0)}
+                  {Object.values(calculateTotalSummary().hours).reduce((sum, value) => sum + (value || 0), 0).toFixed(1)}
                 </span>
                 <span className="text-right">
                   {formatCurrency(calculateAverageHourlyRate(calculateTotalSummary()))} SEK
@@ -1328,7 +1339,7 @@ const QuoteCalculator = () => {
         {role.name}{role.alias ? ` (${role.alias})` : ''}
       </span>
       <span className="text-right">{commitments[role.id] || 0}%</span>
-      <span className="text-right">{hours[role.id] || 0}</span>
+      <span className="text-right">{(hours[role.id] || 0).toFixed(1)}</span>
       
       {/* Hourly Rate cell with +/- controls */}
       <span className="text-right min-w-[90px] inline-flex items-center justify-end gap-0 group">
@@ -1386,7 +1397,7 @@ const QuoteCalculator = () => {
                         {Object.values(commitments).reduce((sum, value) => sum + (value || 0), 0)}%
                       </span>
                       <span className="text-right">
-                        {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0)}
+                        {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0).toFixed(1)}
                       </span>
                       <span className="text-right">
                         {calculateAverageHourlyRate({ 
