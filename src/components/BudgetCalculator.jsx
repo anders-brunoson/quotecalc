@@ -29,7 +29,7 @@ import { exportStateToJSON, importStateFromJSON } from './jsonUtils';
 import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 
-const VERSION = "0.9.2";
+const VERSION = "0.10.0";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -58,7 +58,13 @@ const QuoteCalculator = () => {
   const [chunkOrder, setChunkOrder] = React.useState([]);
   const [selectorKey, setSelectorKey] = useState(0);
   const [discount, setDiscount] = useState(0);
+  const [roleDiscounts, setRoleDiscounts] = useState({});
   const [version, setVersion] = useState(VERSION);
+
+  const repeatTimer = useRef(null);
+  const repeatInterval = useRef(null);
+  const [isHolding, setIsHolding] = useState(false);
+  const [activeButton, setActiveButton] = useState(null);
 
   const [roles, setRoles] = useState([
     { id: '1', name: 'Dummy role (remove, then add your lineup)', code: '303', alias: '' },
@@ -90,7 +96,8 @@ const QuoteCalculator = () => {
       rateCardName,
       predefinedRoles,
       chunkOrder,
-      discount
+      discount,
+      roleDiscounts
     };
     const jsonData = exportStateToJSON(stateToExport);
     const blob = new Blob([jsonData], { type: 'application/json' });
@@ -131,6 +138,7 @@ const QuoteCalculator = () => {
           setPredefinedRoles(importedState.predefinedRoles);
           setChunkOrder(importedState.chunkOrder);
           setDiscount(importedState.discount);
+          setRoleDiscounts(importedState.roleDiscounts || {});
           setActiveTab(importedState.chunks[0]);
           setSelectedChunks([]);
           setSelectorKey(prevKey => prevKey + 1);
@@ -257,7 +265,7 @@ const QuoteCalculator = () => {
 
   useEffect(() => {
     calculateBudget();
-  }, [commitments, hourlyRates, roles, workingDays, workingHours, chunks, hourlyCosts]);
+  }, [commitments, hourlyRates, roles, workingDays, workingHours, chunks, hourlyCosts, roleDiscounts]);
 
   const calculateBudget = () => {
     const newBudget = {};
@@ -275,17 +283,25 @@ const QuoteCalculator = () => {
         commitments: {}, 
         grossMargin: {},
         totalGrossMargin: 0,
-        totalGrossMarginPercentage: 0
+        totalGrossMarginPercentage: 0,
+        originalTotal: 0, // Add this to track pre-discount total
+        totalDiscount: 0  // Add this to track total discount amount
       };
       let chunkRevenue = 0;
       let chunkCost = 0;
+      let chunkOriginalRevenue = 0; // Track original revenue before discounts
 
       roles.forEach(role => {
         const commitment = commitments[role.id]?.[chunk] || 0;
         const days = workingDays[chunk] || 0;
         const hoursPerDay = workingHours[role.id] === '' ? 0 : (workingHours[role.id] ?? 8);
-        const hours = Math.round(days * hoursPerDay * commitment / 100);
-        const revenue = hours * (hourlyRates[role.id] || 0);
+        const hours = (days * hoursPerDay * commitment / 100);
+        const roleDiscount = roleDiscounts[chunk]?.[role.id] || 0;
+        const originalRate = hourlyRates[role.id] || 0;
+        const effectiveRate = originalRate - roleDiscount;
+        
+        const originalRoleRevenue = hours * originalRate;
+        const revenue = hours * effectiveRate;
         const cost = hours * (hourlyCosts[role.id] || 0);
         const grossMargin = revenue - cost;
         const grossMarginPercentage = revenue > 0 ? (grossMargin / revenue) * 100 : 0;
@@ -294,9 +310,9 @@ const QuoteCalculator = () => {
         newBudget[chunk].hours[role.id] = hours;
         newBudget[chunk].commitments[role.id] = commitment;
         newBudget[chunk].grossMargin[role.id] = grossMarginPercentage;
-        newBudget[chunk].total += revenue;
-
+        
         chunkRevenue += revenue;
+        chunkOriginalRevenue += originalRoleRevenue;
         chunkCost += cost;
 
         grandTotalBreakdown[role.id] = (grandTotalBreakdown[role.id] || 0) + revenue;
@@ -305,9 +321,12 @@ const QuoteCalculator = () => {
         grandTotalGrossMargin[role.id] = (grandTotalGrossMargin[role.id] || 0) + grossMargin;
       });
 
+      newBudget[chunk].total = chunkRevenue;
+      newBudget[chunk].originalTotal = chunkOriginalRevenue;
+      newBudget[chunk].totalDiscount = chunkOriginalRevenue - chunkRevenue;
       newBudget[chunk].totalGrossMargin = chunkRevenue - chunkCost;
       newBudget[chunk].totalGrossMarginPercentage = chunkRevenue > 0 ? ((chunkRevenue - chunkCost) / chunkRevenue) * 100 : 0;
-      grandTotal += newBudget[chunk].total;
+      grandTotal += chunkRevenue;
     });
 
     Object.keys(grandTotalCommitments).forEach(roleId => {
@@ -631,6 +650,85 @@ const QuoteCalculator = () => {
     }
   }, [selectedChunks]);
 
+  const handleDecreaseRate = (roleId, chunk) => {
+    setRoleDiscounts(prev => {
+      const currentDiscounts = prev[chunk] || {};
+      const currentDiscount = currentDiscounts[roleId] || 0;
+      const newDiscount = currentDiscount + 1;
+      
+      return {
+        ...prev,
+        [chunk]: {
+          ...currentDiscounts,
+          [roleId]: newDiscount
+        }
+      };
+    });
+  };
+
+  const handleIncreaseRate = (roleId, chunk) => {
+    setRoleDiscounts(prev => {
+      const currentDiscounts = prev[chunk] || {};
+      const currentDiscount = currentDiscounts[roleId] || 0;
+      const newDiscount = Math.max(0, currentDiscount - 1);
+      
+      const newChunkDiscounts = { ...currentDiscounts };
+      if (newDiscount === 0) {
+        delete newChunkDiscounts[roleId];
+      } else {
+        newChunkDiscounts[roleId] = newDiscount;
+      }
+      
+      if (Object.keys(newChunkDiscounts).length === 0) {
+        const { [chunk]: _, ...rest } = prev;
+        return rest;
+      }
+      
+      return {
+        ...prev,
+        [chunk]: newChunkDiscounts
+      };
+    });
+  };
+
+  // Add new handlers for mouse down events
+  const handleMouseDown = (handler, roleId, chunk) => {
+    // Clean up any existing timers first
+    cleanupTimers();
+    
+    // Execute the action immediately
+    handler(roleId, chunk);
+    
+    // Set up the hold-to-repeat functionality
+    setIsHolding(true);
+    
+    repeatTimer.current = setTimeout(() => {
+      repeatInterval.current = setInterval(() => {
+        if (handler === handleIncreaseRate) {
+          const currentDiscount = roleDiscounts[chunk]?.[roleId] || 0;
+          if (currentDiscount > 0) {
+            handler(roleId, chunk);
+          } else {
+            cleanupTimers();
+          }
+        } else {
+          handler(roleId, chunk);
+        }
+      }, 0);
+    }, 400);
+  };
+
+  const handleMouseUp = () => {
+    cleanupTimers();
+  };
+
+  // Clean up on component unmount
+  useEffect(() => {
+    return () => {
+      cleanupTimers();
+    };
+  }, []);
+
   const handleDownloadCSV = () => {
     const csvContent = generateCSV(budget, roles, chunks, commitments, hourlyRates, workingDays);
     downloadCSV(csvContent);
@@ -695,6 +793,7 @@ const QuoteCalculator = () => {
           <li>Double-click a chunk name in the tabs section to edit it.</li>
           <li>Use Ctrl/Cmd + click to select multiple chunks for bulk editing of commitment levels.</li>
           <li>Set working days for each chunk, and adjust commitment percentage, hourly rate, hourly cost, and working hours per day for each role.</li>
+          <li>In each chunk, hover over a role's rate to reveal minus/plus buttons for applying role-specific discounts. Hold the button to rapidly adjust the discount.</li>
           <li>Drag and drop roles to reorder them.</li>
           <li>View budget breakdowns for each chunk and the total, including gross margin calculations.</li>
           <li>Import a rate card CSV to update role rates and costs.</li>
@@ -740,9 +839,18 @@ const QuoteCalculator = () => {
     }
   };
 
-  const calculateAverageHourlyRate = (totalSummary) => {
-    const totalHours = Object.values(totalSummary.hours).reduce((sum, hours) => sum + hours, 0);
-    const totalAmount = Object.values(totalSummary.breakdown).reduce((sum, amount) => sum + amount, 0);
+  const calculateAverageHourlyRate = (chunkData) => {
+    const totalHours = Object.values(chunkData.hours).reduce((sum, hours) => sum + hours, 0);
+    if (totalHours === 0) return 0;
+    
+    // If we have discount information, use the actual effective rate
+    if (chunkData.originalTotal && typeof chunkData.totalDiscount !== 'undefined') {
+      const effectiveTotal = chunkData.originalTotal - chunkData.totalDiscount;
+      return Math.round(effectiveTotal / totalHours);
+    }
+    
+    // Fallback to original calculation
+    const totalAmount = Object.values(chunkData.breakdown).reduce((sum, amount) => sum + amount, 0);
     return totalHours > 0 ? Math.round(totalAmount / totalHours) : 0;
   };
 
@@ -763,6 +871,18 @@ const QuoteCalculator = () => {
       monetary: grossMargin,
       percentage: grossMarginPercentage
     };
+  };
+
+  const cleanupTimers = () => {
+    if (repeatTimer.current) {
+      clearTimeout(repeatTimer.current);
+      repeatTimer.current = null;
+    }
+    if (repeatInterval.current) {
+      clearInterval(repeatInterval.current);
+      repeatInterval.current = null;
+    }
+    setIsHolding(false);
   };
 
   return (
@@ -1105,12 +1225,12 @@ const QuoteCalculator = () => {
             <div className="space-y-2 text-sm">
               <div className="grid grid-cols-8 font-medium">
                 <span className="col-span-2 text-left">Role</span>
-                <span className="text-right">Avg. Commitment</span>
-                <span className="text-right">Total Hours</span>
-                <span className="text-right">Hourly Rate</span>
+                <span className="text-right">Commitment</span>
+                <span className="text-right">Hours</span>
+                <span className="text-right">Hourly</span>
                 <span className="text-right">GM</span>
                 <span className="text-right">GM %</span>
-                <span className="text-right">Total Amount</span>
+                <span className="text-right">Amount</span>
               </div>
               {roles.map(role => {
                 const totalSummary = calculateTotalSummary();
@@ -1124,7 +1244,7 @@ const QuoteCalculator = () => {
                       {role.name}{role.alias ? ` (${role.alias})` : ''}
                     </span>
                     <span className="text-right">{totalSummary.commitments[role.id] || 0}%</span>
-                    <span className="text-right">{roleHours}</span>
+                    <span className="text-right">{roleHours.toFixed(1)}</span>
                     <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
                     <span className="text-right">{roleGrossMargin.toLocaleString()} SEK</span>
                     <span className="text-right">{(totalSummary.grossMargin[role.id] || 0).toFixed(2)}%</span>
@@ -1138,7 +1258,7 @@ const QuoteCalculator = () => {
                   {Object.values(calculateTotalSummary().commitments).reduce((sum, value) => sum + (value || 0), 0)}%
                 </span>
                 <span className="text-right">
-                  {Object.values(calculateTotalSummary().hours).reduce((sum, value) => sum + (value || 0), 0)}
+                  {Object.values(calculateTotalSummary().hours).reduce((sum, value) => sum + (value || 0), 0).toFixed(1)}
                 </span>
                 <span className="text-right">
                   {formatCurrency(calculateAverageHourlyRate(calculateTotalSummary()))} SEK
@@ -1191,56 +1311,127 @@ const QuoteCalculator = () => {
               {breakdown && hours && commitments && grossMargin && (
                 <CardContent>
                   <div className="space-y-2 text-sm">
-                    <div className="grid grid-cols-8 font-medium">
-                      <span className="col-span-2 text-left">Role</span>
-                      <span className="text-right">Commitment</span>
-                      <span className="text-right">Hours</span>
-                      <span className="text-right">Hourly Rate</span>
-                      <span className="text-right">GM</span>
-                      <span className="text-right">GM %</span>
-                      <span className="text-right">Amount</span>
-                    </div>
-                    {roles.map(role => {
-                      const roleRevenue = breakdown[role.id] || 0;
-                      const roleHours = hours[role.id] || 0;
-                      const roleCost = roleHours * (hourlyCosts[role.id] || 0);
-                      const roleGrossMargin = roleRevenue - roleCost;
-                      const roleGrossMarginPercentage = roleRevenue > 0 ? (roleGrossMargin / roleRevenue) * 100 : 0;
-                      return (
-                        <div key={role.id} className="grid grid-cols-8">
-                          <span className="col-span-2 truncate text-left" title={`${role.name}${role.alias ? ` (${role.alias})` : ''}`}>
-                            {role.name}{role.alias ? ` (${role.alias})` : ''}
-                          </span>
-                          <span className="text-right">{commitments[role.id] || 0}%</span>
-                          <span className="text-right">{hours[role.id] || 0}</span>
-                          <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
-                          <span className="text-right">{formatCurrency(roleGrossMargin)} SEK</span>
-                          <span className="text-right">{roleGrossMarginPercentage.toFixed(2)}%</span>
-                          <span className="text-right">{formatCurrency(breakdown[role.id] || 0)} SEK</span>
-                        </div>
-                      );
-                    })}
-                    <div className="grid grid-cols-8 font-bold pt-2 border-t">
+<div className="grid grid-cols-9 font-medium">
+  <span className="col-span-2 text-left">Role</span>
+  <span className="text-right">Commitment</span>
+  <span className="text-right">Hours</span>
+  <span className="text-right">Rate/h</span>
+  <span className="text-right">Disc Rate/h</span>
+  <span className="text-right">GM</span>
+  <span className="text-right">GM %</span>
+  <span className="text-right">Amount</span>
+</div>
+
+{roles.map(role => {
+  const roleRevenue = breakdown[role.id] || 0;
+  const roleHours = hours[role.id] || 0;
+  const roleCost = roleHours * (hourlyCosts[role.id] || 0);
+  const roleGrossMargin = roleRevenue - roleCost;
+  const roleGrossMarginPercentage = roleRevenue > 0 ? (roleGrossMargin / roleRevenue) * 100 : 0;
+  const discount = roleDiscounts[period]?.[role.id] || 0;
+  const originalRate = hourlyRates[role.id] || 0;
+  const effectiveRate = originalRate - discount;
+  const discountPercentage = discount > 0 ? (discount / originalRate * 100) : 0;
+  
+  return (
+    <div key={role.id} className="grid grid-cols-9">
+      <span className="col-span-2 truncate text-left" title={`${role.name}${role.alias ? ` (${role.alias})` : ''}`}>
+        {role.name}{role.alias ? ` (${role.alias})` : ''}
+      </span>
+      <span className="text-right">{commitments[role.id] || 0}%</span>
+      <span className="text-right">{(hours[role.id] || 0).toFixed(1)}</span>
+      
+      {/* Hourly Rate cell with +/- controls */}
+      <span className="text-right min-w-[90px] inline-flex items-center justify-end gap-0 group">
+        <div className="inline-flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+          {discount > 0 && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-4 w-4 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+              title="Increase rate by 1 SEK"
+              onMouseDown={() => handleMouseDown(handleIncreaseRate, role.id, period)}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={() => handleMouseDown(handleIncreaseRate, role.id, period)}
+              onTouchEnd={handleMouseUp}
+            >
+              <span className="text-xs font-bold">+</span>
+            </Button>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-4 w-4 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+            title="Decrease rate by 1 SEK"
+            onMouseDown={() => handleMouseDown(handleDecreaseRate, role.id, period)}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchStart={() => handleMouseDown(handleDecreaseRate, role.id, period)}
+            onTouchEnd={handleMouseUp}
+          >
+            <span className="text-xs font-bold">−</span>
+          </Button>
+        </div>
+        <span className="px-1">{originalRate} SEK</span>
+      </span>
+
+      {/* Effective Rate Cell */}
+      <span className="text-right">
+        {discount > 0 ? (
+          <span className="text-red-600">{effectiveRate} SEK (-{discountPercentage.toFixed(1)}%)</span>
+        ) : (
+          <span className="text-gray-400">—</span>
+        )}
+      </span>
+      <span className="text-right">{formatCurrency(roleGrossMargin)} SEK</span>
+      <span className="text-right">{roleGrossMarginPercentage.toFixed(2)}%</span>
+      <span className="text-right">{formatCurrency(roleRevenue)} SEK</span>
+    </div>
+  );
+})}
+
+                    <div className="grid grid-cols-9 font-bold pt-2 border-t">
                       <span className="col-span-2 text-left">Total</span>
                       <span className="text-right">
                         {Object.values(commitments).reduce((sum, value) => sum + (value || 0), 0)}%
                       </span>
                       <span className="text-right">
-                        {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0)}
+                        {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0).toFixed(1)}
                       </span>
                       <span className="text-right">
-                        {calculateAverageHourlyRate({ hours, breakdown })} SEK
+                        {calculateAverageHourlyRate({ 
+                          hours, 
+                          breakdown, 
+                          originalTotal: budget[period]?.originalTotal || 0,
+                          totalDiscount: budget[period]?.totalDiscount || 0 
+                        })} SEK
                       </span>
-                      <span className="text-right">
+                      <span className="col-span-2 text-right">
                         {formatCurrency(totalGrossMargin)} SEK
                       </span>
                       <span className="text-right">
                         {totalGrossMarginPercentage?.toFixed(2)}%
                       </span>
-                      <span className="text-right">
-                        {formatCurrency(total)} SEK
+                      <span className="text-right text-sm">
+                        {budget[period]?.totalDiscount > 0 ? (
+                          <>
+                            <span className="line-through text-gray-500">
+                              {formatCurrency(budget[period].originalTotal)} SEK
+                            </span>
+                            <br />
+                            <span className="text-red-600">
+                              -{formatCurrency(budget[period].totalDiscount)} SEK
+                            </span>
+                            <br />
+                          </>
+                        ) : null}
+                        <span className="text-base font-bold">
+                          {formatCurrency(total)} SEK
+                        </span>
                       </span>
                     </div>
+
                   </div>
                 </CardContent>
               )}
