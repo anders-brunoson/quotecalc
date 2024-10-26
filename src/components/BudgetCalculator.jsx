@@ -264,7 +264,7 @@ const QuoteCalculator = () => {
 
   useEffect(() => {
     calculateBudget();
-  }, [commitments, hourlyRates, roles, workingDays, workingHours, chunks, hourlyCosts]);
+  }, [commitments, hourlyRates, roles, workingDays, workingHours, chunks, hourlyCosts, roleDiscounts]);
 
   const calculateBudget = () => {
     const newBudget = {};
@@ -282,18 +282,24 @@ const QuoteCalculator = () => {
         commitments: {}, 
         grossMargin: {},
         totalGrossMargin: 0,
-        totalGrossMarginPercentage: 0
+        totalGrossMarginPercentage: 0,
+        originalTotal: 0, // Add this to track pre-discount total
+        totalDiscount: 0  // Add this to track total discount amount
       };
       let chunkRevenue = 0;
       let chunkCost = 0;
+      let chunkOriginalRevenue = 0; // Track original revenue before discounts
 
       roles.forEach(role => {
         const commitment = commitments[role.id]?.[chunk] || 0;
         const days = workingDays[chunk] || 0;
         const hoursPerDay = workingHours[role.id] === '' ? 0 : (workingHours[role.id] ?? 8);
         const hours = Math.round(days * hoursPerDay * commitment / 100);
-        const discount = roleDiscounts[chunk]?.[role.id] || 0;
-        const effectiveRate = hourlyRates[role.id] - discount;
+        const roleDiscount = roleDiscounts[chunk]?.[role.id] || 0;
+        const originalRate = hourlyRates[role.id] || 0;
+        const effectiveRate = originalRate - roleDiscount;
+        
+        const originalRoleRevenue = hours * originalRate;
         const revenue = hours * effectiveRate;
         const cost = hours * (hourlyCosts[role.id] || 0);
         const grossMargin = revenue - cost;
@@ -303,9 +309,9 @@ const QuoteCalculator = () => {
         newBudget[chunk].hours[role.id] = hours;
         newBudget[chunk].commitments[role.id] = commitment;
         newBudget[chunk].grossMargin[role.id] = grossMarginPercentage;
-        newBudget[chunk].total += revenue;
-
+        
         chunkRevenue += revenue;
+        chunkOriginalRevenue += originalRoleRevenue;
         chunkCost += cost;
 
         grandTotalBreakdown[role.id] = (grandTotalBreakdown[role.id] || 0) + revenue;
@@ -314,9 +320,12 @@ const QuoteCalculator = () => {
         grandTotalGrossMargin[role.id] = (grandTotalGrossMargin[role.id] || 0) + grossMargin;
       });
 
+      newBudget[chunk].total = chunkRevenue;
+      newBudget[chunk].originalTotal = chunkOriginalRevenue;
+      newBudget[chunk].totalDiscount = chunkOriginalRevenue - chunkRevenue;
       newBudget[chunk].totalGrossMargin = chunkRevenue - chunkCost;
       newBudget[chunk].totalGrossMarginPercentage = chunkRevenue > 0 ? ((chunkRevenue - chunkCost) / chunkRevenue) * 100 : 0;
-      grandTotal += newBudget[chunk].total;
+      grandTotal += chunkRevenue;
     });
 
     Object.keys(grandTotalCommitments).forEach(roleId => {
@@ -819,9 +828,18 @@ const QuoteCalculator = () => {
     }
   };
 
-  const calculateAverageHourlyRate = (totalSummary) => {
-    const totalHours = Object.values(totalSummary.hours).reduce((sum, hours) => sum + hours, 0);
-    const totalAmount = Object.values(totalSummary.breakdown).reduce((sum, amount) => sum + amount, 0);
+  const calculateAverageHourlyRate = (chunkData) => {
+    const totalHours = Object.values(chunkData.hours).reduce((sum, hours) => sum + hours, 0);
+    if (totalHours === 0) return 0;
+    
+    // If we have discount information, use the actual effective rate
+    if (chunkData.originalTotal && typeof chunkData.totalDiscount !== 'undefined') {
+      const effectiveTotal = chunkData.originalTotal - chunkData.totalDiscount;
+      return Math.round(effectiveTotal / totalHours);
+    }
+    
+    // Fallback to original calculation
+    const totalAmount = Object.values(chunkData.breakdown).reduce((sum, amount) => sum + amount, 0);
     return totalHours > 0 ? Math.round(totalAmount / totalHours) : 0;
   };
 
@@ -1196,12 +1214,12 @@ const QuoteCalculator = () => {
             <div className="space-y-2 text-sm">
               <div className="grid grid-cols-8 font-medium">
                 <span className="col-span-2 text-left">Role</span>
-                <span className="text-right">Avg. Commitment</span>
-                <span className="text-right">Total Hours</span>
-                <span className="text-right">Hourly Rate</span>
+                <span className="text-right">Commitment</span>
+                <span className="text-right">Hours</span>
+                <span className="text-right">Hourly</span>
                 <span className="text-right">GM</span>
                 <span className="text-right">GM %</span>
-                <span className="text-right">Total Amount</span>
+                <span className="text-right">Amount</span>
               </div>
               {roles.map(role => {
                 const totalSummary = calculateTotalSummary();
@@ -1285,7 +1303,7 @@ const QuoteCalculator = () => {
 <div className="grid grid-cols-9 font-medium">
   <span className="col-span-2 text-left">Role</span>
   <span className="text-right">Commitment</span>
-  <span className="text-right">Total Hours</span>
+  <span className="text-right">Hours</span>
   <span className="text-right">Rate/h</span>
   <span className="text-right">Disc Rate/h</span>
   <span className="text-right">GM</span>
@@ -1371,7 +1389,12 @@ const QuoteCalculator = () => {
                         {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0)}
                       </span>
                       <span className="text-right">
-                        {calculateAverageHourlyRate({ hours, breakdown })} SEK
+                        {calculateAverageHourlyRate({ 
+                          hours, 
+                          breakdown, 
+                          originalTotal: budget[period]?.originalTotal || 0,
+                          totalDiscount: budget[period]?.totalDiscount || 0 
+                        })} SEK
                       </span>
                       <span className="col-span-2 text-right">
                         {formatCurrency(totalGrossMargin)} SEK
@@ -1379,8 +1402,22 @@ const QuoteCalculator = () => {
                       <span className="text-right">
                         {totalGrossMarginPercentage?.toFixed(2)}%
                       </span>
-                      <span className="text-right">
-                        {formatCurrency(total)} SEK
+                      <span className="text-right text-sm">
+                        {budget[period]?.totalDiscount > 0 ? (
+                          <>
+                            <span className="line-through text-gray-500">
+                              {formatCurrency(budget[period].originalTotal)} SEK
+                            </span>
+                            <br />
+                            <span className="text-red-600">
+                              -{formatCurrency(budget[period].totalDiscount)} SEK
+                            </span>
+                            <br />
+                          </>
+                        ) : null}
+                        <span className="text-base font-bold">
+                          {formatCurrency(total)} SEK
+                        </span>
                       </span>
                     </div>
 
