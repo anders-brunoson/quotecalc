@@ -91,7 +91,8 @@ const QuoteCalculator = () => {
       rateCardName,
       predefinedRoles,
       chunkOrder,
-      discount
+      discount,
+      roleDiscounts
     };
     const jsonData = exportStateToJSON(stateToExport);
     const blob = new Blob([jsonData], { type: 'application/json' });
@@ -132,6 +133,7 @@ const QuoteCalculator = () => {
           setPredefinedRoles(importedState.predefinedRoles);
           setChunkOrder(importedState.chunkOrder);
           setDiscount(importedState.discount);
+          setRoleDiscounts(importedState.roleDiscounts || {});
           setActiveTab(importedState.chunks[0]);
           setSelectedChunks([]);
           setSelectorKey(prevKey => prevKey + 1);
@@ -286,7 +288,9 @@ const QuoteCalculator = () => {
         const days = workingDays[chunk] || 0;
         const hoursPerDay = workingHours[role.id] === '' ? 0 : (workingHours[role.id] ?? 8);
         const hours = Math.round(days * hoursPerDay * commitment / 100);
-        const revenue = hours * (hourlyRates[role.id] || 0);
+        const discount = roleDiscounts[chunk]?.[role.id] || 0;
+        const effectiveRate = hourlyRates[role.id] - discount;
+        const revenue = hours * effectiveRate;
         const cost = hours * (hourlyCosts[role.id] || 0);
         const grossMargin = revenue - cost;
         const grossMarginPercentage = revenue > 0 ? (grossMargin / revenue) * 100 : 0;
@@ -633,47 +637,45 @@ const QuoteCalculator = () => {
   }, [selectedChunks]);
 
   const handleDecreaseRate = (roleId, chunk) => {
-  setRoleDiscounts(prev => {
-    const currentDiscounts = prev[chunk] || {};
-    const currentDiscount = currentDiscounts[roleId] || 0;
-    const newDiscount = currentDiscount + 1;
-    
-    return {
-      ...prev,
-      [chunk]: {
-        ...currentDiscounts,
-        [roleId]: newDiscount
-      }
-    };
-  });
-};
+    setRoleDiscounts(prev => {
+      const currentDiscounts = prev[chunk] || {};
+      const currentDiscount = currentDiscounts[roleId] || 0;
+      const newDiscount = currentDiscount + 1;
+      
+      return {
+        ...prev,
+        [chunk]: {
+          ...currentDiscounts,
+          [roleId]: newDiscount
+        }
+      };
+    });
+  };
 
-const handleIncreaseRate = (roleId, chunk) => {
-  setRoleDiscounts(prev => {
-    const currentDiscounts = prev[chunk] || {};
-    const currentDiscount = currentDiscounts[roleId] || 0;
-    const newDiscount = Math.max(0, currentDiscount - 1);
-    
-    // If discount becomes 0, remove the entry
-    const newChunkDiscounts = { ...currentDiscounts };
-    if (newDiscount === 0) {
-      delete newChunkDiscounts[roleId];
-    } else {
-      newChunkDiscounts[roleId] = newDiscount;
-    }
-    
-    // If chunk has no discounts, remove it entirely
-    if (Object.keys(newChunkDiscounts).length === 0) {
-      const { [chunk]: _, ...rest } = prev;
-      return rest;
-    }
-    
-    return {
-      ...prev,
-      [chunk]: newChunkDiscounts
-    };
-  });
-};
+  const handleIncreaseRate = (roleId, chunk) => {
+    setRoleDiscounts(prev => {
+      const currentDiscounts = prev[chunk] || {};
+      const currentDiscount = currentDiscounts[roleId] || 0;
+      const newDiscount = Math.max(0, currentDiscount - 1);
+      
+      const newChunkDiscounts = { ...currentDiscounts };
+      if (newDiscount === 0) {
+        delete newChunkDiscounts[roleId];
+      } else {
+        newChunkDiscounts[roleId] = newDiscount;
+      }
+      
+      if (Object.keys(newChunkDiscounts).length === 0) {
+        const { [chunk]: _, ...rest } = prev;
+        return rest;
+      }
+      
+      return {
+        ...prev,
+        [chunk]: newChunkDiscounts
+      };
+    });
+  };
 
   const handleDownloadCSV = () => {
     const csvContent = generateCSV(budget, roles, chunks, commitments, hourlyRates, workingDays);
@@ -1235,11 +1237,12 @@ const handleIncreaseRate = (roleId, chunk) => {
               {breakdown && hours && commitments && grossMargin && (
                 <CardContent>
                   <div className="space-y-2 text-sm">
-<div className="grid grid-cols-8 font-medium">
+<div className="grid grid-cols-9 font-medium">
   <span className="col-span-2 text-left">Role</span>
   <span className="text-right">Commitment</span>
   <span className="text-right">Total Hours</span>
   <span className="text-right">Hourly Rate</span>
+  <span className="text-right">Discounted Rate</span>
   <span className="text-right">GM</span>
   <span className="text-right">GM %</span>
   <span className="text-right">Amount</span>
@@ -1251,10 +1254,13 @@ const handleIncreaseRate = (roleId, chunk) => {
   const roleCost = roleHours * (hourlyCosts[role.id] || 0);
   const roleGrossMargin = roleRevenue - roleCost;
   const roleGrossMarginPercentage = roleRevenue > 0 ? (roleGrossMargin / roleRevenue) * 100 : 0;
-  const discount = roleDiscounts[period]?.[role.id] || 0;  // Changed from chunk to period
+  const discount = roleDiscounts[period]?.[role.id] || 0;
+  const originalRate = hourlyRates[role.id] || 0;
+  const effectiveRate = originalRate - discount;
+  const discountPercentage = discount > 0 ? (discount / originalRate * 100) : 0;
   
   return (
-    <div key={role.id} className="grid grid-cols-8">
+    <div key={role.id} className="grid grid-cols-9">
       <span className="col-span-2 truncate text-left" title={`${role.name}${role.alias ? ` (${role.alias})` : ''}`}>
         {role.name}{role.alias ? ` (${role.alias})` : ''}
       </span>
@@ -1262,35 +1268,39 @@ const handleIncreaseRate = (roleId, chunk) => {
       <span className="text-right">{hours[role.id] || 0}</span>
       
       {/* Hourly Rate cell with +/- controls */}
-      <div className="flex items-center justify-end gap-1">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-4 w-4 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 -mr-1"
-          title="Decrease rate by 1 SEK"
-          onClick={() => handleDecreaseRate(role.id, period)}  // Changed from chunk to period
-        >
-          <span className="text-xs font-bold">−</span>
-        </Button>
-        <span className="min-w-[70px] px-1 text-right">
-          {hourlyRates[role.id]} SEK
-          {discount > 0 && (
-            <span className="text-xs text-red-600 ml-1">
-              (-{((discount / hourlyRates[role.id]) * 100).toFixed(1)}%)
-            </span>
-          )}
-        </span>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-4 w-4 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 -ml-1"
-          title="Increase rate by 1 SEK"
-          onClick={() => handleIncreaseRate(role.id, period)}  // Changed from chunk to period
-          disabled={!discount}
-        >
-          <span className="text-xs font-bold">+</span>
-        </Button>
+      <div className="flex items-right justify-end gap-2">
+        <div className="inline-flex items-right">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-4 w-4 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 -mr-1"
+            title="Decrease rate by 1 SEK"
+            onClick={() => handleDecreaseRate(role.id, period)}
+          >
+            <span className="text-xs font-bold">−</span>
+          </Button>
+          <span className="text-right min-w-[70px] px-1">{originalRate} SEK</span>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-4 w-4 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 -ml-1"
+            title="Increase rate by 1 SEK"
+            onClick={() => handleIncreaseRate(role.id, period)}
+            disabled={!discount}
+          >
+            <span className="text-xs font-bold">+</span>
+          </Button>
+        </div>
       </div>
+
+      {/* Effective Rate Cell */}
+      <span className="text-right">
+        {discount > 0 ? (
+          <span className="text-red-600">{effectiveRate} SEK (-{discountPercentage.toFixed(1)}%)</span>
+        ) : (
+          <span className="text-gray-400">—</span>
+        )}
+      </span>
       <span className="text-right">{formatCurrency(roleGrossMargin)} SEK</span>
       <span className="text-right">{roleGrossMarginPercentage.toFixed(2)}%</span>
       <span className="text-right">{formatCurrency(roleRevenue)} SEK</span>

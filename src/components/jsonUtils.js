@@ -52,7 +52,7 @@ export const importStateFromJSON = (jsonString) => {
     const requiredKeys = [
       'chunks', 'roles', 'commitments', 'hourlyRates', 'hourlyCosts', 
       'workingDays', 'workingHours', 'rateCardName', 'predefinedRoles', 
-      'chunkOrder', 'discount'
+      'chunkOrder', 'discount', 'roleDiscounts'
     ];
     const missingKeys = requiredKeys.filter(key => !(key in importedData));
     
