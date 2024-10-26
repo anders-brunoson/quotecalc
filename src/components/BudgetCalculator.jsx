@@ -30,7 +30,7 @@ import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 import InlineChangelog from './InlineChangelog';
 
-const VERSION = "0.10.1";
+const VERSION = "0.10.2";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -1383,7 +1383,7 @@ const QuoteCalculator = () => {
             <span className="text-xs font-bold">−</span>
           </Button>
         </div>
-        <span className="px-1">{originalRate} SEK</span>
+          <span className={`px-1 ${discount > 0 ? 'line-through text-gray-500' : ''}`}>{originalRate} SEK</span>
       </span>
 
       {/* Effective Rate Cell */}
