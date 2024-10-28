@@ -245,7 +245,7 @@ const QuoteCalculator = () => {
       initialHourlyRates[role.id] = 1000;
       initialWorkingHours[role.id] = 8;  // Set default working hours to 8
       chunks.forEach(chunk => {
-        initialCommitments[role.id][chunk] = 50;
+        initialCommitments[role.id][chunk] = 100;
         initialWorkingDays[chunk] = 21;
       });
     });
@@ -529,7 +529,7 @@ const QuoteCalculator = () => {
         newWorkingDays[chunk] = templateWorkingDays;
         Object.keys(newCommitments).forEach(roleId => {
           if (!newCommitments[roleId]) newCommitments[roleId] = {};
-          newCommitments[roleId][chunk] = 50; // Default commitment
+          newCommitments[roleId][chunk] = 100; // Default commitment
         });
       });
 
@@ -1221,7 +1221,7 @@ const QuoteCalculator = () => {
         </CardHeader>
           <CardContent>
             <div className="mb-4 flex items-center">
-              <label className="mr-2 font-semibold text-red-600">Discount (%): </label>
+              <label className="mr-2 font-semibold text-red-600">Bottom Line Discount (%): </label>
               <Input
                 type="number"
                 value={discount}
@@ -1263,7 +1263,7 @@ const QuoteCalculator = () => {
                 );
               })}
               <div className="grid grid-cols-8 font-bold pt-2 border-t">
-                <span className="col-span-2 text-left">Grand Total</span>
+                <span className="col-span-2 text-left">Total</span>
                 <span className="text-right">
                   {Object.values(calculateTotalSummary().commitments).reduce((sum, value) => sum + (value || 0), 0)}%
                 </span>
@@ -1284,13 +1284,13 @@ const QuoteCalculator = () => {
                 </span>
               </div>
               <div className="grid grid-cols-7 text-sm italic text-red-600 font-semibold">
-                <span className="col-span-5 text-left">Discount ({discount}%)</span>
+                <span className="col-span-5 text-left">Bottom Line Discount ({discount}%)</span>
                 <span className="col-span-2 text-right">
                   -{formatCurrency(calculateTotalSummary().discountAmount)} SEK
                 </span>
               </div>
               <div className="grid grid-cols-7 font-bold text-lg">
-                <span className="col-span-5 text-left">Discounted Total</span>
+                <span className="col-span-5 text-left">Grand Total</span>
                 <span className="col-span-2 text-right">
                   {formatCurrency(calculateTotalSummary().discountedTotal)} SEK
                 </span>
