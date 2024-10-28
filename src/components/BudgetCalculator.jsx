@@ -435,7 +435,7 @@ const QuoteCalculator = () => {
     }]);
     setCommitments(prev => ({
       ...prev,
-      [newId]: chunks.reduce((acc, chunk) => ({ ...acc, [chunk]: 50 }), {})
+      [newId]: chunks.reduce((acc, chunk) => ({ ...acc, [chunk]: 100 }), {})
     }));
     setHourlyRates(prev => ({ ...prev, [newId]: defaultRole.hourlyRate }));
     setHourlyCosts(prev => ({ ...prev, [newId]: defaultRole.hourlyCost }));
