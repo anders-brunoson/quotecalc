@@ -30,7 +30,7 @@ import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 import InlineChangelog from './InlineChangelog';
 
-const VERSION = "0.10.2";
+const VERSION = "0.10.4";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -1211,10 +1211,9 @@ const QuoteCalculator = () => {
           <div className="flex justify-between items-center">
             <span className="text-xl font-bold">Total Summary</span>
             <div className="text-right">
-              <div className="text-2xl font-bold">{formatCurrency(calculateTotalSummary().discountedTotal)} SEK</div>
+              <div className="text-2xl font-bold">SEK {formatCurrency(calculateTotalSummary().discountedTotal)}</div>
               <div className="text-sm">
-                GM: {formatCurrency(calculateGrossMargin(calculateTotalSummary()).monetary)} SEK 
-                ({calculateGrossMargin(calculateTotalSummary()).percentage.toFixed(2)}%)
+                GM: SEK {formatCurrency(calculateGrossMargin(calculateTotalSummary()).monetary)} ({calculateGrossMargin(calculateTotalSummary()).percentage.toFixed(2)}%)
               </div>
             </div>
           </div>
@@ -1255,10 +1254,10 @@ const QuoteCalculator = () => {
                     </span>
                     <span className="text-right">{totalSummary.commitments[role.id] || 0}%</span>
                     <span className="text-right">{roleHours.toFixed(1)}</span>
-                    <span className="text-right">{hourlyRates[role.id] || 0} SEK</span>
-                    <span className="text-right">{roleGrossMargin.toLocaleString()} SEK</span>
+                    <span className="text-right">{formatCurrency(hourlyRates[role.id] || 0)}</span>
+                    <span className="text-right">{roleGrossMargin.toLocaleString()}</span>
                     <span className="text-right">{(totalSummary.grossMargin[role.id] || 0).toFixed(2)}%</span>
-                    <span className="text-right">{roleRevenue.toLocaleString()} SEK</span>
+                    <span className="text-right">{roleRevenue.toLocaleString()}</span>
                   </div>
                 );
               })}
@@ -1271,28 +1270,28 @@ const QuoteCalculator = () => {
                   {Object.values(calculateTotalSummary().hours).reduce((sum, value) => sum + (value || 0), 0).toFixed(1)}
                 </span>
                 <span className="text-right">
-                  {formatCurrency(calculateAverageHourlyRate(calculateTotalSummary()))} SEK
+                  {formatCurrency(calculateAverageHourlyRate(calculateTotalSummary()))}
                 </span>
                 <span className="text-right">
-                  {formatCurrency(calculateGrossMargin(calculateTotalSummary()).monetary)} SEK
+                  {formatCurrency(calculateGrossMargin(calculateTotalSummary()).monetary)}
                 </span>
                 <span className="text-right">
                   {calculateGrossMargin(calculateTotalSummary()).percentage.toFixed(2)}%
                 </span>
                 <span className="text-right">
-                  {formatCurrency(calculateTotalSummary().total)} SEK
+                  {formatCurrency(calculateTotalSummary().total)}
                 </span>
               </div>
               <div className="grid grid-cols-7 text-sm italic text-red-600 font-semibold">
                 <span className="col-span-5 text-left">Bottom Line Discount ({discount}%)</span>
                 <span className="col-span-2 text-right">
-                  -{formatCurrency(calculateTotalSummary().discountAmount)} SEK
+                  -{formatCurrency(calculateTotalSummary().discountAmount)}
                 </span>
               </div>
               <div className="grid grid-cols-7 font-bold text-lg">
                 <span className="col-span-5 text-left">Grand Total</span>
                 <span className="col-span-2 text-right">
-                  {formatCurrency(calculateTotalSummary().discountedTotal)} SEK
+                  {formatCurrency(calculateTotalSummary().discountedTotal)}
                 </span>
               </div>
             </div>
@@ -1311,9 +1310,9 @@ const QuoteCalculator = () => {
                 <div className="flex justify-between items-center">
                   <span>{capitalize(period)}</span>
                   <div className="text-right">
-                    <div className="text-2xl font-bold">{formatCurrency(total)} SEK</div>
+                    <div className="text-2xl font-bold">SEK {formatCurrency(total)}</div>
                     <div className="text-sm font-normal">
-                      GM: {formatCurrency(totalGrossMargin)} SEK ({totalGrossMarginPercentage?.toFixed(2)}%)
+                      GM: SEK {formatCurrency(totalGrossMargin)} ({totalGrossMarginPercentage?.toFixed(2)}%)
                     </div>
                   </div>
                 </div>
@@ -1383,20 +1382,20 @@ const QuoteCalculator = () => {
             <span className="text-xs font-bold">−</span>
           </Button>
         </div>
-          <span className={`px-1 ${discount > 0 ? 'line-through text-gray-500' : ''}`}>{originalRate} SEK</span>
+          <span className={`px-1 ${discount > 0 ? 'line-through text-gray-500' : ''}`}>{formatCurrency(originalRate)}</span>
       </span>
 
       {/* Effective Rate Cell */}
       <span className="text-right">
         {discount > 0 ? (
-          <span className="text-red-600">{effectiveRate} SEK (-{discountPercentage.toFixed(1)}%)</span>
+          <span className="text-red-600">{formatCurrency(effectiveRate)} (-{discountPercentage.toFixed(1)}%)</span>
         ) : (
           <span className="text-gray-400">—</span>
         )}
       </span>
-      <span className="text-right">{formatCurrency(roleGrossMargin)} SEK</span>
+      <span className="text-right">{formatCurrency(roleGrossMargin)}</span>
       <span className="text-right">{roleGrossMarginPercentage.toFixed(2)}%</span>
-      <span className="text-right">{formatCurrency(roleRevenue)} SEK</span>
+      <span className="text-right">{formatCurrency(roleRevenue)}</span>
     </div>
   );
 })}
@@ -1410,15 +1409,14 @@ const QuoteCalculator = () => {
                         {Object.values(hours).reduce((sum, value) => sum + (value || 0), 0).toFixed(1)}
                       </span>
                       <span className="text-right">
-                        {calculateAverageHourlyRate({ 
+                        {formatCurrency(calculateAverageHourlyRate({ 
                           hours, 
                           breakdown, 
                           originalTotal: budget[period]?.originalTotal || 0,
                           totalDiscount: budget[period]?.totalDiscount || 0 
-                        })} SEK
-                      </span>
-                      <span className="col-span-2 text-right">
-                        {formatCurrency(totalGrossMargin)} SEK
+                        }))}
+                      </span>                      <span className="col-span-2 text-right">
+                        {formatCurrency(totalGrossMargin)}
                       </span>
                       <span className="text-right">
                         {totalGrossMarginPercentage?.toFixed(2)}%
@@ -1427,17 +1425,17 @@ const QuoteCalculator = () => {
                         {budget[period]?.totalDiscount > 0 ? (
                           <>
                             <span className="line-through text-gray-500">
-                              {formatCurrency(budget[period].originalTotal)} SEK
+                              {formatCurrency(budget[period].originalTotal)}
                             </span>
                             <br />
                             <span className="text-red-600">
-                              -{formatCurrency(budget[period].totalDiscount)} SEK
+                              -{formatCurrency(budget[period].totalDiscount)}
                             </span>
                             <br />
                           </>
                         ) : null}
                         <span className="text-base font-bold">
-                          {formatCurrency(total)} SEK
+                          {formatCurrency(total)}
                         </span>
                       </span>
                     </div>
