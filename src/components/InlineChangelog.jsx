@@ -3,6 +3,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const changelogData = [
   {
+    version: "0.10.5",
+    date: "2024-10-29",
+    changes: [
+      "Lighter buttons",
+      "Removed SEK to save space"
+    ]
+  },
+{
     version: "0.10.2",
     date: "2024-10-27",
     changes: [

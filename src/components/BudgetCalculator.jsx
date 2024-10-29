@@ -30,7 +30,7 @@ import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 import InlineChangelog from './InlineChangelog';
 
-const VERSION = "0.10.4";
+const VERSION = "0.10.5";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -898,10 +898,9 @@ const QuoteCalculator = () => {
               variant="ghost"
               size="icon"
               onClick={() => setIsInfoOpen(true)}
-              className="text-gray-500 hover:text-gray-700"
-              title="How to use"
+              className="text-gray-400 hover:text-gray-600"
             >
-              <Info className="h-5 w-5" />
+              <Info className="h-4 w-4" />
             </Button>
             <Sun className="h-4 w-4" />
             <Switch
@@ -950,54 +949,70 @@ const QuoteCalculator = () => {
       </div>
       
       <div className="mb-4 flex flex-wrap gap-2">
-        <Button onClick={handleAddRole} className="flex items-center">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Role
-        </Button>
-        <Button onClick={handleAddChunk} className="flex items-center">
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Chunk(s)
-        </Button>
-        <Button 
-          onClick={handleRemoveChunk} 
-          variant="destructive"
-          className="flex items-center"
-          disabled={chunks.length <= 1 || selectedChunks.length === 0}
-        >
-          <X className="mr-2 h-4 w-4" /> Remove Chunk(s)
-        </Button>
+  <Button 
+    variant="outline"
+    onClick={handleAddRole} 
+    className="flex items-center text-sm"
+  >
+    <PlusCircle className="mr-2 h-3 w-3" /> Add Role
+  </Button>
+  <Button 
+    variant="outline"
+    onClick={handleAddChunk} 
+    className="flex items-center text-sm"
+  >
+    <PlusCircle className="mr-2 h-3 w-3" /> Add Chunk(s)
+  </Button>
+  <Button 
+    onClick={handleRemoveChunk} 
+    variant="outline"
+    className="flex items-center text-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+    disabled={chunks.length <= 1 || selectedChunks.length === 0}
+  >
+    <X className="mr-2 h-3 w-3" /> Remove Chunk(s)
+  </Button>
+  <RateCardCSVUpload onRateCardUploaded={handleRateCardUploaded} />
+  <Button 
+    variant="outline"
+    onClick={handleExportJSON} 
+    className="flex items-center text-sm"
+  >
+    <Download className="mr-2 h-3 w-3" /> Export JSON
+  </Button>
+  <Button 
+    variant="outline"
+    onClick={() => document.getElementById('import-json').click()} 
+    className="flex items-center text-sm"
+  >
+    <Upload className="mr-2 h-3 w-3" /> Import JSON
+  </Button>
+  <input
+    id="import-json"
+    type="file"
+    accept=".json"
+    style={{ display: 'none' }}
+    onChange={handleImportJSON}
+  />
+
 {/*
         <Button onClick={handleDownloadCSV} className="flex items-center">
           <Download className="mr-2 h-4 w-4" /> Download CSV
         </Button>
         <CSVUpload onDataUploaded={handleDataUploaded} />
 */}        
-        <RateCardCSVUpload onRateCardUploaded={handleRateCardUploaded} />
-
-        <Button onClick={handleExportJSON} className="flex items-center">
-          <Download className="mr-2 h-4 w-4" /> Export JSON
-        </Button>
-        <Button onClick={() => document.getElementById('import-json').click()} className="flex items-center">
-          <Upload className="mr-2 h-4 w-4" /> Import JSON
-        </Button>
-        <input
-          id="import-json"
-          type="file"
-          accept=".json"
-          style={{ display: 'none' }}
-          onChange={handleImportJSON}
-        />            
       </div>
 
       {rateCardName && (
         <div className="mb-4 flex items-center">
           <h2 className="text-xl font-bold">Current Rate Card: {rateCardName}</h2>
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="icon"
             onClick={() => setIsRateCardModalOpen(true)} 
-            className="ml-2"
+            className="ml-2 text-gray-400 hover:text-gray-600"
             title="View Rate Card"
           >
-            <Eye className="h-5 w-5" />
+            <Eye className="h-4 w-4" />
           </Button>
         </div>
       )}   
@@ -1133,12 +1148,12 @@ const QuoteCalculator = () => {
                             />
                           </div>
                           <Button 
-                            variant="destructive" 
+                            variant="outline" 
                             size="icon"
-                            className="ml-2 h-6 w-6" 
+                            className="ml-2 h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50" 
                             onClick={() => handleRemoveRole(role.id)}
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-3 w-3" />
                           </Button>
                         </div>
                         <div className="flex flex-wrap items-center gap-4 mt-2">

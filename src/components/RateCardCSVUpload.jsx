@@ -59,8 +59,9 @@ const RateCardCSVUpload = ({ onRateCardUploaded }) => {
       <Button 
         className="flex items-center" 
         onClick={() => fileInputRef.current.click()}
+        variant="outline"
       >
-        <Upload className="mr-2 h-4 w-4" />
+        <Upload className="mr-2 h-3 w-3" />
         Upload Rate Card CSV
       </Button>
     </>
