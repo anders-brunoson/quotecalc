@@ -30,7 +30,7 @@ import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 import InlineChangelog from './InlineChangelog';
 
-const VERSION = "0.10.6";
+const VERSION = "0.10.7";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -1276,7 +1276,7 @@ const QuoteCalculator = () => {
                     <span className="text-right">{totalSummary.commitments[role.id] || 0}%</span>
                     <span className="text-right">{roleHours.toFixed(1)}</span>
                     <span className="text-right">{formatCurrency(hourlyRates[role.id] || 0)}</span>
-                    <span className="text-right">{roleGrossMargin.toLocaleString()}</span>
+                    <span className="text-right">{formatCurrency(roleGrossMargin)}</span>
                     <span className="text-right">{(totalSummary.grossMargin[role.id] || 0).toFixed(2)}%</span>
                     <span className="text-right">{roleRevenue.toLocaleString()}</span>
                   </div>
@@ -1341,85 +1341,85 @@ const QuoteCalculator = () => {
               {breakdown && hours && commitments && grossMargin && (
                 <CardContent>
                   <div className="space-y-2 text-sm">
-<div className="grid grid-cols-9 font-medium">
-  <span className="col-span-2 text-left">Role</span>
-  <span className="text-right">Commitment</span>
-  <span className="text-right">Hours</span>
-  <span className="text-right">Rate/h</span>
-  <span className="text-right">Disc Rate/h</span>
-  <span className="text-right">GM</span>
-  <span className="text-right">GM %</span>
-  <span className="text-right">Amount</span>
-</div>
+                    <div className="grid grid-cols-9 font-medium">
+                      <span className="col-span-2 text-left">Role</span>
+                      <span className="text-right">Commitment</span>
+                      <span className="text-right">Hours</span>
+                      <span className="text-right">Rate/h</span>
+                      <span className="text-right">Disc Rate/h</span>
+                      <span className="text-right">GM</span>
+                      <span className="text-right">GM %</span>
+                      <span className="text-right">Amount</span>
+                    </div>
 
-{roles.map(role => {
-  const roleRevenue = breakdown[role.id] || 0;
-  const roleHours = hours[role.id] || 0;
-  const roleCost = roleHours * (hourlyCosts[role.id] || 0);
-  const roleGrossMargin = roleRevenue - roleCost;
-  const roleGrossMarginPercentage = roleRevenue > 0 ? (roleGrossMargin / roleRevenue) * 100 : 0;
-  const discount = roleDiscounts[period]?.[role.id] || 0;
-  const originalRate = hourlyRates[role.id] || 0;
-  const effectiveRate = originalRate - discount;
-  const discountPercentage = discount > 0 ? (discount / originalRate * 100) : 0;
-  
-  return (
-    <div key={role.id} className="grid grid-cols-9">
-      <span className="col-span-2 truncate text-left" title={`${role.name}${role.alias ? ` (${role.alias})` : ''}`}>
-        {role.name}{role.alias ? ` (${role.alias})` : ''}
-      </span>
-      <span className="text-right">{commitments[role.id] || 0}%</span>
-      <span className="text-right">{(hours[role.id] || 0).toFixed(1)}</span>
-      
-      {/* Hourly Rate cell with +/- controls */}
-      <span className="text-right min-w-[90px] inline-flex items-center justify-end gap-0 group">
-        <div className="inline-flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-          {discount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-4 w-4 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-              title="Increase rate by 1 SEK"
-              onMouseDown={() => handleMouseDown(handleIncreaseRate, role.id, period)}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onTouchStart={() => handleMouseDown(handleIncreaseRate, role.id, period)}
-              onTouchEnd={handleMouseUp}
-            >
-              <span className="text-xs font-bold">+</span>
-            </Button>
-          )}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-4 w-4 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-            title="Decrease rate by 1 SEK"
-            onMouseDown={() => handleMouseDown(handleDecreaseRate, role.id, period)}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onTouchStart={() => handleMouseDown(handleDecreaseRate, role.id, period)}
-            onTouchEnd={handleMouseUp}
-          >
-            <span className="text-xs font-bold">−</span>
-          </Button>
-        </div>
-          <span className={`px-1 ${discount > 0 ? 'line-through text-gray-500' : ''}`}>{formatCurrency(originalRate)}</span>
-      </span>
+                    {roles.map(role => {
+                      const roleRevenue = breakdown[role.id] || 0;
+                      const roleHours = hours[role.id] || 0;
+                      const roleCost = roleHours * (hourlyCosts[role.id] || 0);
+                      const roleGrossMargin = roleRevenue - roleCost;
+                      const roleGrossMarginPercentage = roleRevenue > 0 ? (roleGrossMargin / roleRevenue) * 100 : 0;
+                      const discount = roleDiscounts[period]?.[role.id] || 0;
+                      const originalRate = hourlyRates[role.id] || 0;
+                      const effectiveRate = originalRate - discount;
+                      const discountPercentage = discount > 0 ? (discount / originalRate * 100) : 0;
+                      
+                      return (
+                        <div key={role.id} className="grid grid-cols-9">
+                          <span className="col-span-2 truncate text-left" title={`${role.name}${role.alias ? ` (${role.alias})` : ''}`}>
+                            {role.name}{role.alias ? ` (${role.alias})` : ''}
+                          </span>
+                          <span className="text-right">{commitments[role.id] || 0}%</span>
+                          <span className="text-right">{(hours[role.id] || 0).toFixed(1)}</span>
+                          
+                          {/* Hourly Rate cell with +/- controls */}
+                          <span className="text-right min-w-[90px] inline-flex items-center justify-end gap-0 group">
+                            <div className="inline-flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              {discount > 0 && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-4 w-4 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  title="Increase rate by 1 SEK"
+                                  onMouseDown={() => handleMouseDown(handleIncreaseRate, role.id, period)}
+                                  onMouseUp={handleMouseUp}
+                                  onMouseLeave={handleMouseUp}
+                                  onTouchStart={() => handleMouseDown(handleIncreaseRate, role.id, period)}
+                                  onTouchEnd={handleMouseUp}
+                                >
+                                  <span className="text-xs font-bold">+</span>
+                                </Button>
+                              )}
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-4 w-4 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Decrease rate by 1 SEK"
+                                onMouseDown={() => handleMouseDown(handleDecreaseRate, role.id, period)}
+                                onMouseUp={handleMouseUp}
+                                onMouseLeave={handleMouseUp}
+                                onTouchStart={() => handleMouseDown(handleDecreaseRate, role.id, period)}
+                                onTouchEnd={handleMouseUp}
+                              >
+                                <span className="text-xs font-bold">−</span>
+                              </Button>
+                            </div>
+                              <span className={`px-1 ${discount > 0 ? 'line-through text-gray-500' : ''}`}>{formatCurrency(originalRate)}</span>
+                          </span>
 
-      {/* Effective Rate Cell */}
-      <span className="text-right">
-        {discount > 0 ? (
-          <span className="text-red-600">{formatCurrency(effectiveRate)} (-{discountPercentage.toFixed(1)}%)</span>
-        ) : (
-          <span className="text-gray-400">—</span>
-        )}
-      </span>
-      <span className="text-right">{formatCurrency(roleGrossMargin)}</span>
-      <span className="text-right">{roleGrossMarginPercentage.toFixed(2)}%</span>
-      <span className="text-right">{formatCurrency(roleRevenue)}</span>
-    </div>
-  );
-})}
+                          {/* Effective Rate Cell */}
+                          <span className="text-right">
+                            {discount > 0 ? (
+                              <span className="text-red-600">{formatCurrency(effectiveRate)} (-{discountPercentage.toFixed(1)}%)</span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </span>
+                          <span className="text-right">{formatCurrency(roleGrossMargin)}</span>
+                          <span className="text-right">{roleGrossMarginPercentage.toFixed(2)}%</span>
+                          <span className="text-right">{formatCurrency(roleRevenue)}</span>
+                        </div>
+                      );
+                    })}
 
                     <div className="grid grid-cols-9 font-bold pt-2 border-t">
                       <span className="col-span-2 text-left">Total</span>

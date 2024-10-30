@@ -94,20 +94,23 @@ const SearchableRoleSelect = ({ roles, value, onChange, commitment = 0 }) => {
     <div className="relative w-full" ref={dropdownRef} onKeyDown={handleKeyDown}>
       <div className="relative group">
         <div 
-          className="absolute inset-0 bg-gray-100 transition-all duration-200 rounded-md"
-          style={{ width: `${commitment}%` }}
+          className="absolute inset-0 bg-gray-100 dark:bg-gray-700 rounded-md transition-[width] duration-100 ease-out"
+          style={{ 
+            width: `${commitment}%`,
+            willChange: 'width'
+          }}
         />
         <Button
           type="button"
           onClick={toggleDropdown}
-          className="relative w-full justify-between bg-transparent hover:bg-transparent border border-gray-300 hover:border-gray-900 transition-colors duration-200 text-black"
+          className="relative w-full justify-between bg-transparent hover:bg-transparent border border-gray-300 hover:border-gray-900 dark:hover:border-gray-100 transition-colors duration-200 text-gray-900 dark:text-gray-100"
         >
           {value || 'Select a role'}
           {isOpen ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
         </Button>
       </div>
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+        <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
           <Input
             type="text"
             placeholder="Search roles..."
@@ -122,8 +125,10 @@ const SearchableRoleSelect = ({ roles, value, onChange, commitment = 0 }) => {
                 key={`${role.name}-${role.code}`}
                 onClick={() => handleSelect(role)}
                 onMouseEnter={() => setHighlightedIndex(index)}
-                className={`px-4 py-2 cursor-pointer text-left ${
-                  index === highlightedIndex ? 'bg-blue-100' : 'hover:bg-gray-100'
+                className={`px-4 py-2 cursor-pointer text-left dark:text-gray-100 ${
+                  index === highlightedIndex 
+                    ? 'bg-blue-100 dark:bg-blue-900' 
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 {role.name} ({role.code})
