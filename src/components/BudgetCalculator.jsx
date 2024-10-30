@@ -30,7 +30,7 @@ import SearchableRoleSelect from './SearchableRoleSelect';
 import RateCardModal from './RateCardModal';
 import InlineChangelog from './InlineChangelog';
 
-const VERSION = "0.10.5";
+const VERSION = "0.10.6";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -1141,11 +1141,12 @@ const QuoteCalculator = () => {
                             <GripVertical className="h-5 w-5 text-gray-400" />
                           </div>
                           <div className="flex-grow">
-                            <SearchableRoleSelect
-                              roles={sortedPredefinedRoles}
-                              value={role.name}
-                              onChange={(value) => handleRoleChange(role.id, value)}
-                            />
+                          <SearchableRoleSelect
+                            roles={sortedPredefinedRoles}
+                            value={role.name}
+                            onChange={(value) => handleRoleChange(role.id, value)}
+                            commitment={commitments[role.id]?.[chunk] || 0}
+                          />
                           </div>
                           <Button 
                             variant="outline" 
@@ -1157,6 +1158,21 @@ const QuoteCalculator = () => {
                           </Button>
                         </div>
                         <div className="flex flex-wrap items-center gap-4 mt-2">
+                          <div className="w-32">
+                            <span className="text-sm">Commitment</span>
+                            <Input
+                              type="number"
+                              value={commitments[role.id]?.[chunk] || 0}
+                              onChange={(e) => {
+                                const value = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                                handleCommitmentChange(role.id, chunk, [value]);
+                              }}
+                              className="mt-1 text-center"
+                              min="0"
+                              max="100"
+                              step="1"
+                            />
+                          </div>
                           <div className="w-32">
                             <span className="text-sm">Hourly Rate</span>
                             <Input
@@ -1194,16 +1210,6 @@ const QuoteCalculator = () => {
                               onChange={(e) => handleAliasChange(role.id, e.target.value)}
                               placeholder="Alias"
                               className="mt-1 text-center"
-                            />
-                          </div>
-                          <div className="flex-grow min-w-[200px] ">
-                            <span className="text-sm">Commitment: {commitments[role.id]?.[chunk] || 0}%</span>
-                            <Slider
-                              value={[commitments[role.id]?.[chunk] || 0]}
-                              max={100}
-                              step={1}
-                              onValueChange={(val) => handleCommitmentChange(role.id, chunk, val)}
-                              className="mt-2"
                             />
                           </div>
 {/*

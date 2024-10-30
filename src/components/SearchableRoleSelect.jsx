@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-const SearchableRoleSelect = ({ roles, value, onChange }) => {
+const SearchableRoleSelect = ({ roles, value, onChange, commitment = 0 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -92,14 +92,20 @@ const SearchableRoleSelect = ({ roles, value, onChange }) => {
 
   return (
     <div className="relative w-full" ref={dropdownRef} onKeyDown={handleKeyDown}>
-      <Button
-        type="button"
-        onClick={toggleDropdown}
-        className="w-full justify-between bg-white text-black border border-gray-300 hover:bg-gray-100"
-      >
-        {value || 'Select a role'}
-        {isOpen ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
-      </Button>
+      <div className="relative group">
+        <div 
+          className="absolute inset-0 bg-gray-100 transition-all duration-200 rounded-md"
+          style={{ width: `${commitment}%` }}
+        />
+        <Button
+          type="button"
+          onClick={toggleDropdown}
+          className="relative w-full justify-between bg-transparent hover:bg-transparent border border-gray-300 hover:border-gray-900 transition-colors duration-200 text-black"
+        >
+          {value || 'Select a role'}
+          {isOpen ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />}
+        </Button>
+      </div>
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
           <Input
