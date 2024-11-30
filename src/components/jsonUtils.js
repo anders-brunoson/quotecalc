@@ -15,7 +15,10 @@ export const exportStateToJSON = (state) => {
     predefinedRoles,
     chunkOrder,
     discount,
-    roleDiscounts    // Add roleDiscounts to export
+    roleDiscounts,
+    currency,
+    customCurrency,
+    version
   } = state;
 
   // Ensure that roles include the alias field
@@ -40,7 +43,10 @@ export const exportStateToJSON = (state) => {
     predefinedRoles,
     chunkOrder,
     discount,
-    roleDiscounts: roleDiscounts || {}  // Include roleDiscounts with default empty object
+    roleDiscounts: roleDiscounts || {},
+    version,
+    currency: currency || 'SEK',
+    customCurrency: customCurrency || ''
   };
 
   return JSON.stringify(exportData, null, 2);
@@ -49,38 +55,50 @@ export const exportStateToJSON = (state) => {
 export const importStateFromJSON = (jsonString) => {
   try {
     const importedData = JSON.parse(jsonString);
-    
+
     // Validate the imported data structure
     const requiredKeys = [
-      'chunks', 'roles', 'commitments', 'hourlyRates', 'hourlyCosts', 
-      'workingDays', 'workingHours', 'rateCardName', 'predefinedRoles', 
-      'chunkOrder', 'discount'
+      "chunks",
+      "roles",
+      "commitments",
+      "hourlyRates",
+      "hourlyCosts",
+      "workingDays",
+      "workingHours",
+      "rateCardName",
+      "predefinedRoles",
+      "chunkOrder",
+      "discount",
     ];
-    
+
     // Check for required keys
-    const missingKeys = requiredKeys.filter(key => !(key in importedData));
+    const missingKeys = requiredKeys.filter((key) => !(key in importedData));
     if (missingKeys.length > 0) {
-      throw new Error(`Invalid JSON structure. Missing keys: ${missingKeys.join(', ')}`);
+      throw new Error(
+        `Invalid JSON structure. Missing keys: ${missingKeys.join(", ")}`,
+      );
     }
 
     // Ensure that imported roles have the alias field
-    const rolesWithAlias = importedData.roles.map(role => ({
+    const rolesWithAlias = importedData.roles.map((role) => ({
       ...role,
-      alias: role.alias || '' // Ensure alias exists, defaulting to an empty string if not present
+      alias: role.alias || "", // Ensure alias exists, defaulting to an empty string if not present
     }));
 
     // Handle the roleDiscounts field, providing empty object as default if not present
     const roleDiscounts = importedData.roleDiscounts || {};
 
     return {
-      simulationName: importedData.simulationName || '',
-      simulationDescription: importedData.simulationDescription || '',
+      simulationName: importedData.simulationName || "",
+      simulationDescription: importedData.simulationDescription || "",
       ...importedData,
       roles: rolesWithAlias,
-      roleDiscounts  // Include roleDiscounts in the returned data
+      roleDiscounts, // Include roleDiscounts in the returned data
+      currency: importedData.currency || "SEK",
+      customCurrency: importedData.customCurrency || ""
     };
   } catch (error) {
-    console.error('Error parsing JSON:', error);
+    console.error("Error parsing JSON:", error);
     throw error;
   }
 };

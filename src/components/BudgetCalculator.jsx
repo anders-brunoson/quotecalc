@@ -40,8 +40,9 @@ import { exportStateToJSON, importStateFromJSON } from "./jsonUtils";
 import SearchableRoleSelect from "./SearchableRoleSelect";
 import RateCardModal from "./RateCardModal";
 import InlineChangelog from "./InlineChangelog";
+import CurrencySelect from "./CurrencySelect";
 
-const VERSION = "0.10.7";
+const VERSION = "0.11.0";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -74,6 +75,8 @@ const QuoteCalculator = () => {
   const [selectorKey, setSelectorKey] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [roleDiscounts, setRoleDiscounts] = useState({});
+  const [currency, setCurrency] = useState("SEK");
+  const [customCurrency, setCustomCurrency] = useState("");
   const [version, setVersion] = useState(VERSION);
 
   const repeatTimer = useRef(null);
@@ -128,6 +131,8 @@ const QuoteCalculator = () => {
       chunkOrder,
       discount,
       roleDiscounts,
+      currency,
+      customCurrency,
     };
     const jsonData = exportStateToJSON(stateToExport);
     const blob = new Blob([jsonData], { type: "application/json" });
@@ -172,6 +177,8 @@ const QuoteCalculator = () => {
           setChunkOrder(importedState.chunkOrder);
           setDiscount(importedState.discount);
           setRoleDiscounts(importedState.roleDiscounts || {});
+          setCurrency(importedState.currency || "SEK");
+          setCustomCurrency(importedState.customCurrency || "");
           setActiveTab(importedState.chunks[0]);
           setSelectedChunks([]);
           setSelectorKey((prevKey) => prevKey + 1);
@@ -293,9 +300,11 @@ const QuoteCalculator = () => {
     setCommitments(initialCommitments);
     setHourlyRates(initialHourlyRates);
     setWorkingDays(initialWorkingDays);
-    setWorkingHours(initialWorkingHours); // Set the initial working hours
+    setWorkingHours(initialWorkingHours);
     setActiveTab(chunks[0]);
     setChunkOrder(chunks);
+    setCurrency("SEK");
+    setCustomCurrency("");
 
     const initialHourlyCosts = {};
     roles.forEach((role) => {
@@ -1085,14 +1094,27 @@ const QuoteCalculator = () => {
     setIsHolding(false);
   };
 
+  const displayCurrency = () => {
+    if (currency === "custom") return customCurrency;
+    return currency;
+  };
+
   return (
     <div className={`p-4 w-full min-w-fit ${darkMode ? "dark" : ""}`}>
       <div className="mb-6">
         {/* Header row */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Quote Simulator</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold">Quote Simulator</h1>
+            <span className="text-sm text-gray-500 mt-2">v{version}</span>
+          </div>{" "}
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">v{version}</span>
+            <CurrencySelect
+              value={currency}
+              onChange={setCurrency}
+              customCurrency={customCurrency}
+              onCustomCurrencyChange={setCustomCurrency}
+            />
             <Button
               variant="ghost"
               size="icon"
@@ -1503,11 +1525,11 @@ const QuoteCalculator = () => {
                 <span className="text-xl font-bold">Total Summary</span>
                 <div className="text-right">
                   <div className="text-2xl font-bold">
-                    SEK{" "}
+                    {displayCurrency()}{" "}
                     {formatCurrency(calculateTotalSummary().discountedTotal)}
                   </div>
                   <div className="text-sm">
-                    GM: SEK{" "}
+                    GM: {displayCurrency()}{" "}
                     {formatCurrency(
                       calculateGrossMargin(calculateTotalSummary()).monetary,
                     )}{" "}
@@ -1652,10 +1674,11 @@ const QuoteCalculator = () => {
                     <span>{capitalize(period)}</span>
                     <div className="text-right">
                       <div className="text-2xl font-bold">
-                        SEK {formatCurrency(total)}
+                        {displayCurrency()} {formatCurrency(total)}
                       </div>
                       <div className="text-sm font-normal">
-                        GM: SEK {formatCurrency(totalGrossMargin)} (
+                        GM: {displayCurrency()}{" "}
+                        {formatCurrency(totalGrossMargin)} (
                         {totalGrossMarginPercentage?.toFixed(2)}%)
                       </div>
                     </div>
@@ -1715,7 +1738,7 @@ const QuoteCalculator = () => {
                                     variant="ghost"
                                     size="icon"
                                     className="h-4 w-4 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                    title="Increase rate by 1 SEK"
+                                    title="Increase rate by 1"
                                     onMouseDown={() =>
                                       handleMouseDown(
                                         handleIncreaseRate,
@@ -1741,7 +1764,7 @@ const QuoteCalculator = () => {
                                   variant="ghost"
                                   size="icon"
                                   className="h-4 w-4 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  title="Decrease rate by 1 SEK"
+                                  title="Decrease rate by 1"
                                   onMouseDown={() =>
                                     handleMouseDown(
                                       handleDecreaseRate,

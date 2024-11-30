@@ -3,8 +3,15 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const changelogData = [
   {
-    version: "0.10.7",
+    version: "0.11.0",
     date: "2024-11-30",
+    changes: [
+      "Dynamic currency symbol"
+    ]
+  },
+  {
+    version: "0.10.7",
+    date: "2024-11-29",
     changes: [
       "Role copy button"
     ]

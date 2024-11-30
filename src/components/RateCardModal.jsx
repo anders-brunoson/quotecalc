@@ -29,8 +29,8 @@ const RateCardModal = ({ isOpen, onClose, rateCardName, predefinedRoles }) => {
               {sortedRoles.map((role, index) => (
                 <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-2 py-1">{role.name}</td>
-                  <td className="px-2 py-1 text-right">{role.hourlyRate} SEK</td>
-                  <td className="px-2 py-1 text-right">{role.hourlyCost} SEK</td>
+                  <td className="px-2 py-1 text-right">{role.hourlyRate}</td>
+                  <td className="px-2 py-1 text-right">{role.hourlyCost}</td>
                   <td className="px-2 py-1 text-center">{role.code}</td>
                 </tr>
               ))}
