@@ -3,6 +3,13 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const changelogData = [
   {
+    version: "0.10.7",
+    date: "2024-11-30",
+    changes: [
+      "Role copy button"
+    ]
+  },
+  {
     version: "0.10.6",
     date: "2024-10-30",
     changes: [
