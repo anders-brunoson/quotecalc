@@ -41,8 +41,9 @@ import SearchableRoleSelect from "./SearchableRoleSelect";
 import RateCardModal from "./RateCardModal";
 import InlineChangelog from "./InlineChangelog";
 import CurrencySelect from "./CurrencySelect";
+import SetupManager from "./SetupManager";
 
-const VERSION = "0.11.0";
+const VERSION = "0.12.0";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -70,17 +71,15 @@ const QuoteCalculator = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [editingChunk, setEditingChunk] = useState(null);
-  const editInputRef = useRef(null);
   const [chunkOrder, setChunkOrder] = React.useState([]);
   const [selectorKey, setSelectorKey] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [roleDiscounts, setRoleDiscounts] = useState({});
   const [currency, setCurrency] = useState("SEK");
   const [customCurrency, setCustomCurrency] = useState("");
+  const [setups, setSetups] = useState([]);
+  const [currentSetupId, setCurrentSetupId] = useState(null);
   const [version, setVersion] = useState(VERSION);
-
-  const repeatTimer = useRef(null);
-  const repeatInterval = useRef(null);
   const [isHolding, setIsHolding] = useState(false);
   const [activeButton, setActiveButton] = useState(null);
 
@@ -113,6 +112,248 @@ const QuoteCalculator = () => {
     { name: "Data Scientist", hourlyRate: 1400, hourlyCost: 950, code: "306" },
     { name: "QA Engineer", hourlyRate: 1000, hourlyCost: 700, code: "303" },
   ]);
+
+  const editInputRef = useRef(null);
+  const repeatTimer = useRef(null);
+  const repeatInterval = useRef(null);
+  const isLoadingSetup = useRef(false);
+  const autoSaveTimeout = useRef(null);
+
+  const sortedPredefinedRoles = React.useMemo(() => {
+    return [...predefinedRoles].sort((a, b) => a.name.localeCompare(b.name));
+  }, [predefinedRoles]);
+
+  useEffect(() => {
+    console.log("QuoteCalculator component loaded");
+  }, []);
+
+  useEffect(() => {
+    console.log("predefinedRoles updated:", predefinedRoles);
+  }, [predefinedRoles]);
+
+  useEffect(() => {
+    if (chunks.length > 0 && !chunks.includes(activeTab)) {
+      setActiveTab(chunks[0]);
+    }
+  }, [chunks, activeTab]);
+
+  useEffect(() => {
+    document.body.classList.toggle("dark", darkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
+    calculateBudget();
+  }, [
+    commitments,
+    hourlyRates,
+    roles,
+    workingDays,
+    workingHours,
+    chunks,
+    hourlyCosts,
+    roleDiscounts,
+  ]);
+
+  // Add this effect to initialize the first setup
+  useEffect(() => {
+    const savedSetups = localStorage.getItem("quoteSetups");
+    if (savedSetups) {
+      const parsed = JSON.parse(savedSetups);
+      setSetups(parsed);
+      if (parsed.length > 0) {
+        loadSetup(parsed[0].id);
+      }
+    } else {
+      // Create initial setup with properly initialized state
+      const initialChunks = [
+        "Dummy chunk 1 (remove, then add your own)",
+        "Dummy chunk 2",
+      ];
+      const initialRoles = [
+        {
+          id: "1",
+          name: "Dummy role (remove, then add your lineup)",
+          code: "303",
+          alias: "",
+        },
+      ];
+
+      // Initialize all required state objects
+      const initialCommitments = {};
+      const initialHourlyRates = {};
+      const initialHourlyCosts = {};
+      const initialWorkingDays = {};
+      const initialWorkingHours = {};
+
+      initialRoles.forEach((role) => {
+        initialCommitments[role.id] = {};
+        initialHourlyRates[role.id] = 1000;
+        initialHourlyCosts[role.id] = 700;
+        initialWorkingHours[role.id] = 8;
+        initialChunks.forEach((chunk) => {
+          initialCommitments[role.id][chunk] = 100;
+          initialWorkingDays[chunk] = 21;
+        });
+      });
+
+      const initialSetup = {
+        id: Date.now().toString(),
+        simulationName: "Dummy setup", // Changed from empty string
+        simulationDescription: "",
+        chunks: initialChunks,
+        roles: initialRoles,
+        roleDiscounts: {},
+        commitments: initialCommitments,
+        hourlyRates: initialHourlyRates,
+        hourlyCosts: initialHourlyCosts,
+        workingDays: initialWorkingDays,
+        workingHours: initialWorkingHours,
+        rateCardName: "",
+        predefinedRoles: predefinedRoles,
+        chunkOrder: initialChunks,
+        discount: 0,
+        currency: "SEK",
+        customCurrency: "",
+      };
+
+      setSetups([initialSetup]);
+      setCurrentSetupId(initialSetup.id);
+
+      // Set all state directly instead of relying on loadSetup
+      setSimulationName("Dummy setup"); // Changed from empty string
+      setSimulationDescription("");
+      setChunks(initialChunks);
+      setRoles(initialRoles);
+      setCommitments(initialCommitments);
+      setHourlyRates(initialHourlyRates);
+      setHourlyCosts(initialHourlyCosts);
+      setWorkingDays(initialWorkingDays);
+      setWorkingHours(initialWorkingHours);
+      setRateCardName("");
+      setChunkOrder(initialChunks);
+      setDiscount(0);
+      setRoleDiscounts({});
+      setCurrency("SEK");
+      setCustomCurrency("");
+      setActiveTab(initialChunks[0]);
+
+      localStorage.setItem("quoteSetups", JSON.stringify([initialSetup]));
+    }
+  }, []);
+
+  // Ensure we always have a current setup if setups exist
+  useEffect(() => {
+    if (setups.length > 0 && !currentSetupId) {
+      loadSetup(setups[0].id);
+    }
+  }, [setups, currentSetupId]);
+
+  // Add this effect to auto-save changes
+  useEffect(() => {
+    if (currentSetupId && !isLoadingSetup.current) {
+      // Clear any pending autosave
+      if (autoSaveTimeout.current) {
+        clearTimeout(autoSaveTimeout.current);
+      }
+
+      // Set a new delayed autosave
+      autoSaveTimeout.current = setTimeout(() => {
+        saveCurrentSetup();
+      }, 1000); // Wait 1 second after last change before saving
+    }
+
+    // Cleanup
+    return () => {
+      if (autoSaveTimeout.current) {
+        clearTimeout(autoSaveTimeout.current);
+      }
+    };
+  }, [
+    simulationName,
+    simulationDescription,
+    chunks,
+    roles,
+    commitments,
+    hourlyRates,
+    hourlyCosts,
+    workingDays,
+    workingHours,
+    rateCardName,
+    predefinedRoles,
+    chunkOrder,
+    discount,
+    roleDiscounts,
+    currency,
+    customCurrency,
+  ]);
+
+  useEffect(() => {
+    console.log("Setup changed:", {
+      currentSetupId,
+      roleDiscounts,
+      isLoadingSetup: isLoadingSetup.current,
+    });
+  }, [currentSetupId]);
+
+  useEffect(() => {
+    // Only run this effect if we actually need to update something
+    const needsUpdate =
+      selectedChunks.length === 0 || (!activeTab && selectedChunks.length > 0);
+
+    if (needsUpdate) {
+      if (selectedChunks.length === 0) {
+        setSelectedChunks(chunks);
+      }
+      if (!activeTab && selectedChunks.length > 0) {
+        setActiveTab(selectedChunks[selectedChunks.length - 1]);
+      }
+    }
+  }, [selectedChunks, chunks, activeTab]);
+
+  useEffect(() => {
+    if (editingChunk && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [editingChunk]);
+
+  // Clean up on component unmount
+  useEffect(() => {
+    return () => {
+      cleanupTimers();
+    };
+  }, []);
+
+  const initializeState = () => {
+    const initialCommitments = {};
+    const initialHourlyRates = {};
+    const initialWorkingDays = {};
+    const initialWorkingHours = {};
+
+    roles.forEach((role) => {
+      initialCommitments[role.id] = {};
+      initialHourlyRates[role.id] = 1000;
+      initialWorkingHours[role.id] = 8; // Set default working hours to 8
+      chunks.forEach((chunk) => {
+        initialCommitments[role.id][chunk] = 100;
+        initialWorkingDays[chunk] = 21;
+      });
+    });
+
+    setCommitments(initialCommitments);
+    setHourlyRates(initialHourlyRates);
+    setWorkingDays(initialWorkingDays);
+    setWorkingHours(initialWorkingHours);
+    setActiveTab(chunks[0]);
+    setChunkOrder(chunks);
+    setCurrency("SEK");
+    setCustomCurrency("");
+
+    const initialHourlyCosts = {};
+    roles.forEach((role) => {
+      initialHourlyCosts[role.id] = 700; // Set default hourly cost to 700
+    });
+    setHourlyCosts(initialHourlyCosts);
+  };
 
   const handleExportJSON = () => {
     const stateToExport = {
@@ -191,14 +432,6 @@ const QuoteCalculator = () => {
     }
   };
 
-  const sortedPredefinedRoles = React.useMemo(() => {
-    return [...predefinedRoles].sort((a, b) => a.name.localeCompare(b.name));
-  }, [predefinedRoles]);
-
-  useEffect(() => {
-    console.log("QuoteCalculator component loaded");
-  }, []);
-
   const handleRateCardUploaded = (data) => {
     console.log("Rate card uploaded, received data:", data);
 
@@ -251,10 +484,6 @@ const QuoteCalculator = () => {
     setIsRateCardModalOpen(true);
   };
 
-  useEffect(() => {
-    console.log("predefinedRoles updated:", predefinedRoles);
-  }, [predefinedRoles]);
-
   const handleDataUploaded = (data) => {
     setChunks(data.chunks);
     setRoles(data.roles);
@@ -267,64 +496,225 @@ const QuoteCalculator = () => {
     setSelectedChunks([]);
   };
 
-  useEffect(() => {
-    initializeState();
-  }, []);
+  // Add the setup management functions after state declarations
+  // and before existing function declarations
 
-  useEffect(() => {
-    if (chunks.length > 0 && !chunks.includes(activeTab)) {
-      setActiveTab(chunks[0]);
-    }
-  }, [chunks, activeTab]);
+  const saveCurrentSetup = () => {
+    if (!currentSetupId) return;
 
-  useEffect(() => {
-    document.body.classList.toggle("dark", darkMode);
-  }, [darkMode]);
+    const currentState = {
+      id: currentSetupId,
+      simulationName,
+      simulationDescription,
+      chunks,
+      roles,
+      roleDiscounts,
+      commitments,
+      hourlyRates,
+      hourlyCosts,
+      workingDays,
+      workingHours,
+      rateCardName,
+      predefinedRoles,
+      chunkOrder,
+      discount,
+      currency,
+      customCurrency,
+    };
 
-  const initializeState = () => {
-    const initialCommitments = {};
-    const initialHourlyRates = {};
-    const initialWorkingDays = {};
-    const initialWorkingHours = {};
-
-    roles.forEach((role) => {
-      initialCommitments[role.id] = {};
-      initialHourlyRates[role.id] = 1000;
-      initialWorkingHours[role.id] = 8; // Set default working hours to 8
-      chunks.forEach((chunk) => {
-        initialCommitments[role.id][chunk] = 100;
-        initialWorkingDays[chunk] = 21;
-      });
+    setSetups((prevSetups) => {
+      const newSetups = prevSetups.map((setup) =>
+        setup.id === currentSetupId ? currentState : setup,
+      );
+      localStorage.setItem("quoteSetups", JSON.stringify(newSetups));
+      return newSetups;
     });
-
-    setCommitments(initialCommitments);
-    setHourlyRates(initialHourlyRates);
-    setWorkingDays(initialWorkingDays);
-    setWorkingHours(initialWorkingHours);
-    setActiveTab(chunks[0]);
-    setChunkOrder(chunks);
-    setCurrency("SEK");
-    setCustomCurrency("");
-
-    const initialHourlyCosts = {};
-    roles.forEach((role) => {
-      initialHourlyCosts[role.id] = 700; // Set default hourly cost to 700
-    });
-    setHourlyCosts(initialHourlyCosts);
   };
 
-  useEffect(() => {
-    calculateBudget();
-  }, [
-    commitments,
-    hourlyRates,
-    roles,
-    workingDays,
-    workingHours,
-    chunks,
-    hourlyCosts,
-    roleDiscounts,
-  ]);
+  const loadSetup = (setupId) => {
+    console.log("loadSetup called:", {
+      setupId,
+      previousSetupId: currentSetupId,
+      roleDiscounts,
+      triggerSource: new Error().stack,
+    });
+
+    cleanupTimers();
+    isLoadingSetup.current = true; // Set flag before loading
+    const setup = setups.find((s) => s.id === setupId);
+    if (!setup) return;
+
+    // Set current setup ID first
+    setCurrentSetupId(setupId);
+
+    // Load all setup data
+    setSimulationName(setup.simulationName || "");
+    setSimulationDescription(setup.simulationDescription || "");
+    setChunks(setup.chunks || []);
+    setRoles(setup.roles || []);
+    setRoleDiscounts(setup.roleDiscounts || {});
+    setCommitments(setup.commitments || {});
+    setHourlyRates(setup.hourlyRates || {});
+    setHourlyCosts(setup.hourlyCosts || {});
+    setWorkingDays(setup.workingDays || {});
+    setWorkingHours(setup.workingHours || {});
+    setRateCardName(setup.rateCardName || "");
+    setPredefinedRoles(setup.predefinedRoles || []);
+    setChunkOrder(setup.chunkOrder || []);
+    setDiscount(setup.discount || 0);
+    setCurrency(setup.currency || "SEK");
+    setCustomCurrency(setup.customCurrency || "");
+
+    // Select all chunks in the new setup
+    const newChunks = setup.chunks || [];
+    if (newChunks.length > 0) {
+      setSelectedChunks(newChunks);
+      setActiveTab(newChunks[0]); // Set the first chunk as active
+    } else {
+      setSelectedChunks([]);
+      setActiveTab("");
+    }
+
+    // Reset the flag after a tick to ensure all state updates have happened
+    setTimeout(() => {
+      isLoadingSetup.current = false;
+    }, 0);
+  };
+
+  const copySetup = (newName) => {
+    const newId = Date.now().toString();
+    console.log("Creating copy with ID:", newId);
+
+    const currentState = {
+      id: newId,
+      version,
+      simulationName: newName,
+      simulationDescription,
+      chunks: [...chunks],
+      roles: roles.map((role) => ({ ...role })),
+      commitments: JSON.parse(JSON.stringify(commitments)),
+      hourlyRates: { ...hourlyRates },
+      hourlyCosts: { ...hourlyCosts },
+      workingDays: { ...workingDays },
+      workingHours: { ...workingHours },
+      rateCardName,
+      predefinedRoles: [...predefinedRoles],
+      chunkOrder: [...chunkOrder],
+      discount,
+      roleDiscounts: JSON.parse(JSON.stringify(roleDiscounts)), // Verify this deep copy
+      currency,
+      customCurrency,
+    };
+
+    console.log("New setup roleDiscounts:", currentState.roleDiscounts);
+
+    // First update localStorage
+    const newSetups = [...setups, currentState];
+    localStorage.setItem("quoteSetups", JSON.stringify(newSetups));
+
+    console.log(
+      "After copying - Stored setups roleDiscounts:",
+      newSetups.map((s) => ({ id: s.id, roleDiscounts: s.roleDiscounts })),
+    );
+
+    // Then update state
+    setSetups(newSetups);
+    setCurrentSetupId(newId);
+    setSimulationName(newName);
+  };
+
+  const deleteSetup = (setupId) => {
+    setSetups((prevSetups) => {
+      const newSetups = prevSetups.filter((setup) => setup.id !== setupId);
+
+      // If this was the last setup, wipe everything and start fresh
+      if (newSetups.length === 0) {
+        wipeStorage();
+        return newSetups;
+      }
+
+      localStorage.setItem("quoteSetups", JSON.stringify(newSetups));
+      return newSetups;
+    });
+
+    if (currentSetupId === setupId) {
+      const remainingSetup = setups.find((s) => s.id !== setupId);
+      if (remainingSetup) {
+        loadSetup(remainingSetup.id);
+      } else {
+        initializeState();
+        setCurrentSetupId(null);
+      }
+    }
+  };
+
+  const renameSetup = (setupId, newName) => {
+    setSetups((prevSetups) => {
+      const newSetups = prevSetups.map((setup) =>
+        setup.id === setupId ? { ...setup, simulationName: newName } : setup,
+      );
+      localStorage.setItem("quoteSetups", JSON.stringify(newSetups));
+      return newSetups;
+    });
+
+    if (currentSetupId === setupId) {
+      setSimulationName(newName);
+    }
+  };
+
+  const createEmptySetup = () => {
+    const newId = Date.now().toString();
+    const emptySetup = {
+      id: newId,
+      version,
+      simulationName: "New Setup",
+      simulationDescription: "",
+      chunks: [],
+      roles: [],
+      commitments: {},
+      hourlyRates: {},
+      hourlyCosts: {},
+      workingDays: {},
+      workingHours: {},
+      rateCardName: "",
+      predefinedRoles, // Keep the predefined roles list
+      chunkOrder: [],
+      discount: 0,
+      roleDiscounts: {},
+      currency,
+      customCurrency,
+    };
+
+    // Update localStorage and state
+    const newSetups = [...setups, emptySetup];
+    localStorage.setItem("quoteSetups", JSON.stringify(newSetups));
+
+    // Update all related state
+    setSetups(newSetups);
+    setCurrentSetupId(newId);
+    setSimulationName("New Setup");
+    setSimulationDescription("");
+    setChunks([]);
+    setRoles([]);
+    setCommitments({});
+    setHourlyRates({});
+    setHourlyCosts({});
+    setWorkingDays({});
+    setWorkingHours({});
+    setRateCardName("");
+    setChunkOrder([]);
+    setDiscount(0);
+    setRoleDiscounts({});
+    setSelectedChunks([]);
+    setActiveTab("");
+  };
+
+  const wipeStorage = () => {
+    // Clear ALL localStorage data
+    localStorage.clear();
+    // Reload the page to trigger the initial load effect
+    window.location.reload();
+  };
 
   const calculateBudget = () => {
     const newBudget = {};
@@ -556,6 +946,11 @@ const QuoteCalculator = () => {
   };
 
   const handleCopyRole = (roleToCopy) => {
+    console.log("Before copying setup - roleDiscounts:", {
+      original: roleDiscounts,
+      stringified: JSON.stringify(roleDiscounts),
+    });
+
     const newId = Date.now().toString();
     // Copy the role
     setRoles((prev) => [
@@ -591,6 +986,20 @@ const QuoteCalculator = () => {
       ...prev,
       [newId]: prev[roleToCopy.id],
     }));
+
+    // Copy role discounts
+    setRoleDiscounts((prev) => {
+      const newDiscounts = { ...prev };
+      // For each chunk that has discounts
+      Object.keys(prev).forEach((chunk) => {
+        if (prev[chunk]?.[roleToCopy.id]) {
+          if (!newDiscounts[chunk]) newDiscounts[chunk] = {};
+          newDiscounts[chunk][newId] = prev[chunk][roleToCopy.id];
+        }
+      });
+      console.log("After copying setup - roleDiscounts will be:", newDiscounts);
+      return newDiscounts;
+    });
   };
 
   const handleAddChunk = () => {
@@ -733,15 +1142,6 @@ const QuoteCalculator = () => {
     setActiveTab(chunk);
   };
 
-  useEffect(() => {
-    if (selectedChunks.length === 0) {
-      setSelectedChunks(chunks);
-    }
-    if (selectedChunks.length > 0 && !activeTab) {
-      setActiveTab(selectedChunks[0]);
-    }
-  }, [selectedChunks, chunks, activeTab]);
-
   const handleChunkDoubleClick = (chunk) => {
     setEditingChunk(chunk);
     // Use setTimeout to ensure the input is rendered before trying to focus and select
@@ -795,21 +1195,15 @@ const QuoteCalculator = () => {
     }
   };
 
-  useEffect(() => {
-    if (editingChunk && editInputRef.current) {
-      editInputRef.current.focus();
-    }
-  }, [editingChunk]);
-
-  useEffect(() => {
-    if (selectedChunks.length > 0) {
-      setActiveTab(selectedChunks[selectedChunks.length - 1]);
-    } else {
-      setActiveTab("");
-    }
-  }, [selectedChunks]);
-
+  // Role discount handlers
   const handleDecreaseRate = (roleId, chunk) => {
+    console.log("handleDecreaseRate called:", {
+      roleId,
+      chunk,
+      currentSetupId,
+      triggerSource: new Error().stack,
+    });
+
     setRoleDiscounts((prev) => {
       const currentDiscounts = prev[chunk] || {};
       const currentDiscount = currentDiscounts[roleId] || 0;
@@ -826,26 +1220,36 @@ const QuoteCalculator = () => {
   };
 
   const handleIncreaseRate = (roleId, chunk) => {
+    console.log("handleIncreaseRate called:", {
+      roleId,
+      chunk,
+      currentSetupId,
+      triggerSource: new Error().stack, // This will show us where this is being called from
+    });
+
     setRoleDiscounts((prev) => {
       const currentDiscounts = prev[chunk] || {};
       const currentDiscount = currentDiscounts[roleId] || 0;
-      const newDiscount = Math.max(0, currentDiscount - 1);
 
-      const newChunkDiscounts = { ...currentDiscounts };
-      if (newDiscount === 0) {
-        delete newChunkDiscounts[roleId];
-      } else {
-        newChunkDiscounts[roleId] = newDiscount;
+      // Return early if already at 0
+      if (currentDiscount === 0) {
+        return prev;
       }
 
-      if (Object.keys(newChunkDiscounts).length === 0) {
+      const newDiscount = Math.max(0, currentDiscount - 1);
+
+      // Batch the updates
+      if (newDiscount === 0) {
         const { [chunk]: _, ...rest } = prev;
         return rest;
       }
 
       return {
         ...prev,
-        [chunk]: newChunkDiscounts,
+        [chunk]: {
+          ...currentDiscounts,
+          [roleId]: newDiscount,
+        },
       };
     });
   };
@@ -864,29 +1268,27 @@ const QuoteCalculator = () => {
     repeatTimer.current = setTimeout(() => {
       repeatInterval.current = setInterval(() => {
         if (handler === handleIncreaseRate) {
-          const currentDiscount = roleDiscounts[chunk]?.[roleId] || 0;
-          if (currentDiscount > 0) {
-            handler(roleId, chunk);
-          } else {
-            cleanupTimers();
-          }
+          // Get the current discount value from within the state setter
+          setRoleDiscounts((prev) => {
+            const currentDiscount = prev[chunk]?.[roleId] || 0;
+            if (currentDiscount > 0) {
+              handler(roleId, chunk);
+              return prev; // Return unchanged state
+            } else {
+              cleanupTimers();
+              return prev; // Return unchanged state
+            }
+          });
         } else {
           handler(roleId, chunk);
         }
-      }, 0);
+      }, 50);
     }, 400);
   };
 
   const handleMouseUp = () => {
     cleanupTimers();
   };
-
-  // Clean up on component unmount
-  useEffect(() => {
-    return () => {
-      cleanupTimers();
-    };
-  }, []);
 
   const handleDownloadCSV = () => {
     const csvContent = generateCSV(
@@ -1103,11 +1505,17 @@ const QuoteCalculator = () => {
     <div className={`p-4 w-full min-w-fit ${darkMode ? "dark" : ""}`}>
       <div className="mb-6">
         {/* Header row */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold">Quote Simulator</h1>
-            <span className="text-sm text-gray-500 mt-2">v{version}</span>
-          </div>{" "}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+          <div className="flex flex-col items-start w-full sm:w-auto mb-4 sm:mb-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold">Team Setup Simulator</h1>
+              <span className="text-sm text-gray-500 mt-2">v{version}</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-1 text-left">
+              Create and compare different team setups, calculate budgets and
+              margins.
+            </p>
+          </div>
           <div className="flex items-center space-x-2">
             <CurrencySelect
               value={currency}
@@ -1133,6 +1541,16 @@ const QuoteCalculator = () => {
           </div>
         </div>
 
+        <SetupManager
+          setups={setups}
+          currentSetup={setups.find((s) => s.id === currentSetupId)}
+          onSetupChange={loadSetup}
+          onSetupCopy={copySetup}
+          onSetupDelete={deleteSetup}
+          onCreateEmpty={createEmptySetup}
+          onWipeStorage={wipeStorage}
+        />
+
         {/* Cards row */}
         <div className="flex justify-between gap-6">
           <Card className="2xl:w-2/5 xl:w-3/5 w-4/5">
@@ -1148,7 +1566,58 @@ const QuoteCalculator = () => {
                   <Input
                     id="simulationName"
                     value={simulationName}
-                    onChange={(e) => setSimulationName(e.target.value)}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      console.log("Simulation name input change:", {
+                        oldName: simulationName,
+                        newName,
+                        currentSetupId,
+                        currentSetups: setups,
+                      });
+
+                      setSimulationName(newName);
+
+                      // Immediately update the setup list with the new name
+                      if (currentSetupId) {
+                        console.log("Updating setups for new name:", {
+                          currentSetupId,
+                          newName,
+                          setupsBeforeUpdate: setups,
+                        });
+
+                        const updatedSetups = setups.map((setup) =>
+                          setup.id === currentSetupId
+                            ? { ...setup, simulationName: newName }
+                            : setup,
+                        );
+
+                        console.log("Updated setups array:", {
+                          updatedSetups,
+                          hasNameChanged: updatedSetups.some(
+                            (s) =>
+                              s.id === currentSetupId &&
+                              s.simulationName === newName,
+                          ),
+                        });
+
+                        setSetups([...updatedSetups]); // Force a new array reference
+                        localStorage.setItem(
+                          "quoteSetups",
+                          JSON.stringify(updatedSetups),
+                        );
+
+                        // Verify localStorage update
+                        const savedSetups = JSON.parse(
+                          localStorage.getItem("quoteSetups"),
+                        );
+                        console.log("Verified localStorage update:", {
+                          savedSetups,
+                          nameInStorage: savedSetups.find(
+                            (s) => s.id === currentSetupId,
+                          )?.simulationName,
+                        });
+                      }
+                    }}
                     placeholder="Enter simulation/quote name"
                   />
                 </div>
@@ -1358,7 +1827,11 @@ const QuoteCalculator = () => {
             </div>
             <div className="mt-4 text-left">
               <h3 className="font-semibold">Selected Chunk(s):</h3>
-              <p>{selectedChunks.map(capitalize).join(", ") || "None"}</p>
+              <p>
+                {chunks.length === 0
+                  ? "No chunks added yet. Click 'Add Chunk(s)' to get started. Or upload an existing setup with the Import JSON button."
+                  : selectedChunks.map(capitalize).join(", ") || "None"}
+              </p>
             </div>
             {selectedChunks.length > 0 && (
               <>
@@ -1756,6 +2229,7 @@ const QuoteCalculator = () => {
                                       )
                                     }
                                     onTouchEnd={handleMouseUp}
+                                    onBlur={handleMouseUp}
                                   >
                                     <span className="text-xs font-bold">+</span>
                                   </Button>
@@ -1782,6 +2256,7 @@ const QuoteCalculator = () => {
                                     )
                                   }
                                   onTouchEnd={handleMouseUp}
+                                  onBlur={handleMouseUp}
                                 >
                                   <span className="text-xs font-bold">−</span>
                                 </Button>
