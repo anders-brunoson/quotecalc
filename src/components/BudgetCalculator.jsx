@@ -530,51 +530,56 @@ useEffect(() => {
     });
   };
 
-  const loadSetup = (setupId) => {
-    console.log("loadSetup called:", {
-      setupId,
-      previousSetupId: currentSetupId,
-      roleDiscounts,
-      triggerSource: new Error().stack,
-    });
-
-    cleanupTimers();
-    isLoadingSetup.current = true; // Set flag before loading
-    const setup = setups.find((s) => s.id === setupId);
-    if (!setup) return;
-
-    // Set current setup ID first
-    setCurrentSetupId(setupId);
-
-    // Load all setup data
-    setVersion(setup.version || VERSION);
-    setSimulationName(setup.simulationName || "");
-    setSimulationDescription(setup.simulationDescription || "");
-    setChunks(setup.chunks || []);
-    setRoles(setup.roles || []);
-    setRoleDiscounts(setup.roleDiscounts || {});
-    setCommitments(setup.commitments || {});
-    setHourlyRates(setup.hourlyRates || {});
-    setHourlyCosts(setup.hourlyCosts || {});
-    setWorkingDays(setup.workingDays || {});
-    setWorkingHours(setup.workingHours || {});
-    setRateCardName(setup.rateCardName || "");
-    setPredefinedRoles(setup.predefinedRoles || []);
-    setChunkOrder(setup.chunkOrder || []);
-    setDiscount(setup.discount || 0);
-    setCurrency(setup.currency || "SEK");
-    setCustomCurrency(setup.customCurrency || "");
-
-    // Reset the flag after a tick to ensure all state updates have happened
-    setTimeout(() => {
-      isLoadingSetup.current = false;
-    }, 0);
-  };
-
-  console.log("Before copying setup - roleDiscounts:", {
-    original: roleDiscounts,
-    stringified: JSON.stringify(roleDiscounts),
+const loadSetup = (setupId) => {
+  console.log("loadSetup called:", {
+    setupId,
+    previousSetupId: currentSetupId,
+    roleDiscounts,
+    triggerSource: new Error().stack,
   });
+
+  cleanupTimers();
+  isLoadingSetup.current = true; // Set flag before loading
+  const setup = setups.find((s) => s.id === setupId);
+  if (!setup) return;
+
+  // Set current setup ID first
+  setCurrentSetupId(setupId);
+
+  // Load all setup data
+  setVersion(setup.version || VERSION);
+  setSimulationName(setup.simulationName || "");
+  setSimulationDescription(setup.simulationDescription || "");
+  setChunks(setup.chunks || []);
+  setRoles(setup.roles || []);
+  setRoleDiscounts(setup.roleDiscounts || {});
+  setCommitments(setup.commitments || {});
+  setHourlyRates(setup.hourlyRates || {});
+  setHourlyCosts(setup.hourlyCosts || {});
+  setWorkingDays(setup.workingDays || {});
+  setWorkingHours(setup.workingHours || {});
+  setRateCardName(setup.rateCardName || "");
+  setPredefinedRoles(setup.predefinedRoles || []);
+  setChunkOrder(setup.chunkOrder || []);
+  setDiscount(setup.discount || 0);
+  setCurrency(setup.currency || "SEK");
+  setCustomCurrency(setup.customCurrency || "");
+
+  // Select all chunks in the new setup
+  const newChunks = setup.chunks || [];
+  if (newChunks.length > 0) {
+    setSelectedChunks(newChunks);
+    setActiveTab(newChunks[0]); // Set the first chunk as active
+  } else {
+    setSelectedChunks([]);
+    setActiveTab("");
+  }
+
+  // Reset the flag after a tick to ensure all state updates have happened
+  setTimeout(() => {
+    isLoadingSetup.current = false;
+  }, 0);
+};
 
   const copySetup = (newName) => {
     const newId = Date.now().toString();
