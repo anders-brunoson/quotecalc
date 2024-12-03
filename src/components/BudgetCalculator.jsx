@@ -43,7 +43,7 @@ import InlineChangelog from "./InlineChangelog";
 import CurrencySelect from "./CurrencySelect";
 import SetupManager from "./SetupManager";
 
-const VERSION = "0.11.0";
+const VERSION = "0.12.0";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -198,7 +198,6 @@ const QuoteCalculator = () => {
 
       const initialSetup = {
         id: Date.now().toString(),
-        version: VERSION,
         simulationName: "Dummy setup", // Changed from empty string
         simulationDescription: "",
         chunks: initialChunks,
@@ -505,7 +504,6 @@ const QuoteCalculator = () => {
 
     const currentState = {
       id: currentSetupId,
-      version,
       simulationName,
       simulationDescription,
       chunks,
@@ -550,7 +548,6 @@ const QuoteCalculator = () => {
     setCurrentSetupId(setupId);
 
     // Load all setup data
-    setVersion(setup.version || VERSION);
     setSimulationName(setup.simulationName || "");
     setSimulationDescription(setup.simulationDescription || "");
     setChunks(setup.chunks || []);
@@ -1508,11 +1505,17 @@ const QuoteCalculator = () => {
     <div className={`p-4 w-full min-w-fit ${darkMode ? "dark" : ""}`}>
       <div className="mb-6">
         {/* Header row */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold">Team Setup Simulator</h1>
-            <span className="text-sm text-gray-500 mt-2">v{version}</span>
-          </div>{" "}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+          <div className="flex flex-col items-start w-full sm:w-auto mb-4 sm:mb-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold">Team Setup Simulator</h1>
+              <span className="text-sm text-gray-500 mt-2">v{version}</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-1 text-left">
+              Create and compare different team setups, calculate budgets and
+              margins.
+            </p>
+          </div>
           <div className="flex items-center space-x-2">
             <CurrencySelect
               value={currency}
