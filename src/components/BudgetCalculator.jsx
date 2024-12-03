@@ -629,6 +629,13 @@ const QuoteCalculator = () => {
   const deleteSetup = (setupId) => {
     setSetups((prevSetups) => {
       const newSetups = prevSetups.filter((setup) => setup.id !== setupId);
+
+      // If this was the last setup, wipe everything and start fresh
+      if (newSetups.length === 0) {
+        wipeStorage();
+        return newSetups;
+      }
+
       localStorage.setItem("quoteSetups", JSON.stringify(newSetups));
       return newSetups;
     });
@@ -1503,7 +1510,7 @@ const QuoteCalculator = () => {
         {/* Header row */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold">Quote Simulator</h1>
+            <h1 className="text-3xl font-bold">Team Setup Simulator</h1>
             <span className="text-sm text-gray-500 mt-2">v{version}</span>
           </div>{" "}
           <div className="flex items-center space-x-2">
@@ -1819,7 +1826,7 @@ const QuoteCalculator = () => {
               <h3 className="font-semibold">Selected Chunk(s):</h3>
               <p>
                 {chunks.length === 0
-                  ? "No chunks added yet. Click 'Add Chunk(s)' to get started."
+                  ? "No chunks added yet. Click 'Add Chunk(s)' to get started. Or upload an existing setup with the Import JSON button."
                   : selectedChunks.map(capitalize).join(", ") || "None"}
               </p>
             </div>
