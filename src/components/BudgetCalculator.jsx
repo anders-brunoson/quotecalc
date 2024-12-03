@@ -43,7 +43,7 @@ import InlineChangelog from "./InlineChangelog";
 import CurrencySelect from "./CurrencySelect";
 import SetupManager from "./SetupManager";
 
-const VERSION = "0.12.0";
+const VERSION = "0.12.1";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -1228,26 +1228,23 @@ const QuoteCalculator = () => {
     });
 
     setRoleDiscounts((prev) => {
-      const currentDiscounts = prev[chunk] || {};
-      const currentDiscount = currentDiscounts[roleId] || 0;
+      const currentDiscount = prev[chunk]?.[roleId] || 0;
+      if (currentDiscount === 0) return prev;
 
-      // Return early if already at 0
-      if (currentDiscount === 0) {
-        return prev;
-      }
-
-      const newDiscount = Math.max(0, currentDiscount - 1);
-
-      // Batch the updates
+      const newDiscount = currentDiscount - 1;
       if (newDiscount === 0) {
-        const { [chunk]: _, ...rest } = prev;
-        return rest;
+        const { [chunk]: chunkDiscounts, ...restChunks } = prev;
+        if (!chunkDiscounts) return prev;
+        const { [roleId]: _, ...restRoles } = chunkDiscounts;
+        return Object.keys(restRoles).length > 0
+          ? { ...restChunks, [chunk]: restRoles }
+          : restChunks;
       }
 
       return {
         ...prev,
         [chunk]: {
-          ...currentDiscounts,
+          ...prev[chunk],
           [roleId]: newDiscount,
         },
       };
@@ -1256,39 +1253,37 @@ const QuoteCalculator = () => {
 
   // Add new handlers for mouse down events
   const handleMouseDown = (handler, roleId, chunk) => {
-    // Clean up any existing timers first
     cleanupTimers();
 
-    // Execute the action immediately
+    // Initial action
     handler(roleId, chunk);
 
-    // Set up the hold-to-repeat functionality
-    setIsHolding(true);
-
+    // Start repeating after a delay
     repeatTimer.current = setTimeout(() => {
       repeatInterval.current = setInterval(() => {
-        if (handler === handleIncreaseRate) {
-          // Get the current discount value from within the state setter
-          setRoleDiscounts((prev) => {
-            const currentDiscount = prev[chunk]?.[roleId] || 0;
-            if (currentDiscount > 0) {
-              handler(roleId, chunk);
-              return prev; // Return unchanged state
-            } else {
-              cleanupTimers();
-              return prev; // Return unchanged state
-            }
-          });
-        } else {
-          handler(roleId, chunk);
-        }
+        handler(roleId, chunk);
       }, 50);
     }, 400);
+
+    setIsHolding(true);
   };
 
   const handleMouseUp = () => {
     cleanupTimers();
+    setActiveButton(null);
   };
+
+  const cleanupTimers = () => {
+    if (repeatTimer.current) {
+      clearTimeout(repeatTimer.current);
+      repeatTimer.current = null;
+    }
+    if (repeatInterval.current) {
+      clearInterval(repeatInterval.current);
+      repeatInterval.current = null;
+    }
+    setIsHolding(false);
+  };  
 
   const handleDownloadCSV = () => {
     const csvContent = generateCSV(
@@ -1482,18 +1477,6 @@ const QuoteCalculator = () => {
       monetary: grossMargin,
       percentage: grossMarginPercentage,
     };
-  };
-
-  const cleanupTimers = () => {
-    if (repeatTimer.current) {
-      clearTimeout(repeatTimer.current);
-      repeatTimer.current = null;
-    }
-    if (repeatInterval.current) {
-      clearInterval(repeatInterval.current);
-      repeatInterval.current = null;
-    }
-    setIsHolding(false);
   };
 
   const displayCurrency = () => {
