@@ -1509,7 +1509,9 @@ const QuoteCalculator = () => {
           <div className="flex flex-col items-start w-full sm:w-auto mb-4 sm:mb-0">
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold">Team Setup Simulator</h1>
-              <span className="text-sm text-gray-500 mt-2">v{version}</span>
+              <span className="mt-2 px-1 py-0.5 text-xs bg-red-100 text-red-700 rounded">
+                v{version}
+              </span>
             </div>
             <p className="text-sm text-gray-500 mt-1 text-left">
               Create and compare different team setups, calculate budgets and
