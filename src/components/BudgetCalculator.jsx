@@ -155,89 +155,92 @@ const QuoteCalculator = () => {
   ]);
 
   // Add this effect to initialize the first setup
-useEffect(() => {
-  const savedSetups = localStorage.getItem("quoteSetups");
-  if (savedSetups) {
-    const parsed = JSON.parse(savedSetups);
-    setSetups(parsed);
-    if (parsed.length > 0) {
-      loadSetup(parsed[0].id);
-    }
-  } else {
-    // Create initial setup with properly initialized state
-    const initialChunks = ["Dummy chunk 1 (remove, then add your own)", "Dummy chunk 2"];
-    const initialRoles = [
-      {
-        id: "1",
-        name: "Dummy role (remove, then add your lineup)",
-        code: "303",
-        alias: "",
-      },
-    ];
+  useEffect(() => {
+    const savedSetups = localStorage.getItem("quoteSetups");
+    if (savedSetups) {
+      const parsed = JSON.parse(savedSetups);
+      setSetups(parsed);
+      if (parsed.length > 0) {
+        loadSetup(parsed[0].id);
+      }
+    } else {
+      // Create initial setup with properly initialized state
+      const initialChunks = [
+        "Dummy chunk 1 (remove, then add your own)",
+        "Dummy chunk 2",
+      ];
+      const initialRoles = [
+        {
+          id: "1",
+          name: "Dummy role (remove, then add your lineup)",
+          code: "303",
+          alias: "",
+        },
+      ];
 
-    // Initialize all required state objects
-    const initialCommitments = {};
-    const initialHourlyRates = {};
-    const initialHourlyCosts = {};
-    const initialWorkingDays = {};
-    const initialWorkingHours = {};
+      // Initialize all required state objects
+      const initialCommitments = {};
+      const initialHourlyRates = {};
+      const initialHourlyCosts = {};
+      const initialWorkingDays = {};
+      const initialWorkingHours = {};
 
-    initialRoles.forEach((role) => {
-      initialCommitments[role.id] = {};
-      initialHourlyRates[role.id] = 1000;
-      initialHourlyCosts[role.id] = 700;
-      initialWorkingHours[role.id] = 8;
-      initialChunks.forEach((chunk) => {
-        initialCommitments[role.id][chunk] = 100;
-        initialWorkingDays[chunk] = 21;
+      initialRoles.forEach((role) => {
+        initialCommitments[role.id] = {};
+        initialHourlyRates[role.id] = 1000;
+        initialHourlyCosts[role.id] = 700;
+        initialWorkingHours[role.id] = 8;
+        initialChunks.forEach((chunk) => {
+          initialCommitments[role.id][chunk] = 100;
+          initialWorkingDays[chunk] = 21;
+        });
       });
-    });
 
-    const initialSetup = {
-      id: Date.now().toString(),
-      version: VERSION,
-      simulationName: "",
-      simulationDescription: "",
-      chunks: initialChunks,
-      roles: initialRoles,
-      roleDiscounts: {},
-      commitments: initialCommitments,
-      hourlyRates: initialHourlyRates,
-      hourlyCosts: initialHourlyCosts,
-      workingDays: initialWorkingDays,
-      workingHours: initialWorkingHours,
-      rateCardName: "",
-      predefinedRoles: predefinedRoles,
-      chunkOrder: initialChunks,
-      discount: 0,
-      currency: "SEK",
-      customCurrency: "",
-    };
+      const initialSetup = {
+        id: Date.now().toString(),
+        version: VERSION,
+        simulationName: "Dummy setup", // Changed from empty string
+        simulationDescription: "",
+        chunks: initialChunks,
+        roles: initialRoles,
+        roleDiscounts: {},
+        commitments: initialCommitments,
+        hourlyRates: initialHourlyRates,
+        hourlyCosts: initialHourlyCosts,
+        workingDays: initialWorkingDays,
+        workingHours: initialWorkingHours,
+        rateCardName: "",
+        predefinedRoles: predefinedRoles,
+        chunkOrder: initialChunks,
+        discount: 0,
+        currency: "SEK",
+        customCurrency: "",
+      };
 
-    setSetups([initialSetup]);
-    setCurrentSetupId(initialSetup.id);
+      setSetups([initialSetup]);
+      setCurrentSetupId(initialSetup.id);
 
-    // Set all state directly instead of relying on loadSetup
-    setSimulationName("");
-    setSimulationDescription("");
-    setChunks(initialChunks);
-    setRoles(initialRoles);
-    setCommitments(initialCommitments);
-    setHourlyRates(initialHourlyRates);
-    setHourlyCosts(initialHourlyCosts);
-    setWorkingDays(initialWorkingDays);
-    setWorkingHours(initialWorkingHours);
-    setRateCardName("");
-    setChunkOrder(initialChunks);
-    setDiscount(0);
-    setRoleDiscounts({});
-    setCurrency("SEK");
-    setCustomCurrency("");
-    setActiveTab(initialChunks[0]);
-    
-    localStorage.setItem("quoteSetups", JSON.stringify([initialSetup]));
-  }
-}, []);
+      // Set all state directly instead of relying on loadSetup
+      setSimulationName("Dummy setup"); // Changed from empty string
+      setSimulationDescription("");
+      setChunks(initialChunks);
+      setRoles(initialRoles);
+      setCommitments(initialCommitments);
+      setHourlyRates(initialHourlyRates);
+      setHourlyCosts(initialHourlyCosts);
+      setWorkingDays(initialWorkingDays);
+      setWorkingHours(initialWorkingHours);
+      setRateCardName("");
+      setChunkOrder(initialChunks);
+      setDiscount(0);
+      setRoleDiscounts({});
+      setCurrency("SEK");
+      setCustomCurrency("");
+      setActiveTab(initialChunks[0]);
+
+      localStorage.setItem("quoteSetups", JSON.stringify([initialSetup]));
+    }
+  }, []);
 
   // Ensure we always have a current setup if setups exist
   useEffect(() => {
@@ -530,56 +533,56 @@ useEffect(() => {
     });
   };
 
-const loadSetup = (setupId) => {
-  console.log("loadSetup called:", {
-    setupId,
-    previousSetupId: currentSetupId,
-    roleDiscounts,
-    triggerSource: new Error().stack,
-  });
+  const loadSetup = (setupId) => {
+    console.log("loadSetup called:", {
+      setupId,
+      previousSetupId: currentSetupId,
+      roleDiscounts,
+      triggerSource: new Error().stack,
+    });
 
-  cleanupTimers();
-  isLoadingSetup.current = true; // Set flag before loading
-  const setup = setups.find((s) => s.id === setupId);
-  if (!setup) return;
+    cleanupTimers();
+    isLoadingSetup.current = true; // Set flag before loading
+    const setup = setups.find((s) => s.id === setupId);
+    if (!setup) return;
 
-  // Set current setup ID first
-  setCurrentSetupId(setupId);
+    // Set current setup ID first
+    setCurrentSetupId(setupId);
 
-  // Load all setup data
-  setVersion(setup.version || VERSION);
-  setSimulationName(setup.simulationName || "");
-  setSimulationDescription(setup.simulationDescription || "");
-  setChunks(setup.chunks || []);
-  setRoles(setup.roles || []);
-  setRoleDiscounts(setup.roleDiscounts || {});
-  setCommitments(setup.commitments || {});
-  setHourlyRates(setup.hourlyRates || {});
-  setHourlyCosts(setup.hourlyCosts || {});
-  setWorkingDays(setup.workingDays || {});
-  setWorkingHours(setup.workingHours || {});
-  setRateCardName(setup.rateCardName || "");
-  setPredefinedRoles(setup.predefinedRoles || []);
-  setChunkOrder(setup.chunkOrder || []);
-  setDiscount(setup.discount || 0);
-  setCurrency(setup.currency || "SEK");
-  setCustomCurrency(setup.customCurrency || "");
+    // Load all setup data
+    setVersion(setup.version || VERSION);
+    setSimulationName(setup.simulationName || "");
+    setSimulationDescription(setup.simulationDescription || "");
+    setChunks(setup.chunks || []);
+    setRoles(setup.roles || []);
+    setRoleDiscounts(setup.roleDiscounts || {});
+    setCommitments(setup.commitments || {});
+    setHourlyRates(setup.hourlyRates || {});
+    setHourlyCosts(setup.hourlyCosts || {});
+    setWorkingDays(setup.workingDays || {});
+    setWorkingHours(setup.workingHours || {});
+    setRateCardName(setup.rateCardName || "");
+    setPredefinedRoles(setup.predefinedRoles || []);
+    setChunkOrder(setup.chunkOrder || []);
+    setDiscount(setup.discount || 0);
+    setCurrency(setup.currency || "SEK");
+    setCustomCurrency(setup.customCurrency || "");
 
-  // Select all chunks in the new setup
-  const newChunks = setup.chunks || [];
-  if (newChunks.length > 0) {
-    setSelectedChunks(newChunks);
-    setActiveTab(newChunks[0]); // Set the first chunk as active
-  } else {
-    setSelectedChunks([]);
-    setActiveTab("");
-  }
+    // Select all chunks in the new setup
+    const newChunks = setup.chunks || [];
+    if (newChunks.length > 0) {
+      setSelectedChunks(newChunks);
+      setActiveTab(newChunks[0]); // Set the first chunk as active
+    } else {
+      setSelectedChunks([]);
+      setActiveTab("");
+    }
 
-  // Reset the flag after a tick to ensure all state updates have happened
-  setTimeout(() => {
-    isLoadingSetup.current = false;
-  }, 0);
-};
+    // Reset the flag after a tick to ensure all state updates have happened
+    setTimeout(() => {
+      isLoadingSetup.current = false;
+    }, 0);
+  };
 
   const copySetup = (newName) => {
     const newId = Date.now().toString();
@@ -698,6 +701,8 @@ const loadSetup = (setupId) => {
     setChunkOrder([]);
     setDiscount(0);
     setRoleDiscounts({});
+    setSelectedChunks([]);
+    setActiveTab("");
   };
 
   const wipeStorage = () => {
@@ -1812,7 +1817,11 @@ const loadSetup = (setupId) => {
             </div>
             <div className="mt-4 text-left">
               <h3 className="font-semibold">Selected Chunk(s):</h3>
-              <p>{selectedChunks.map(capitalize).join(", ") || "None"}</p>
+              <p>
+                {chunks.length === 0
+                  ? "No chunks added yet. Click 'Add Chunk(s)' to get started."
+                  : selectedChunks.map(capitalize).join(", ") || "None"}
+              </p>
             </div>
             {selectedChunks.length > 0 && (
               <>

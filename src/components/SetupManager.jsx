@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -9,24 +9,31 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Copy, Trash2, PlusCircle, Ban } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-const SetupManager = ({ 
+const SetupManager = ({
   setups,
   currentSetup,
   onSetupChange,
   onSetupCopy,
   onSetupDelete,
   onCreateEmpty,
-  onWipeStorage
+  onWipeStorage,
 }) => {
   const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
   const [isWipeDialogOpen, setIsWipeDialogOpen] = useState(false);
   const [copySetupName, setCopySetupName] = useState("");
 
   const handleCopySetup = () => {
-    if (!currentSetup?.simulationName) return;
+    // Remove the check for simulationName since we now ensure it's always present
     setCopySetupName(`${currentSetup.simulationName} (Copy)`);
     setIsCopyDialogOpen(true);
   };
@@ -40,7 +47,7 @@ const SetupManager = ({
   };
 
   const handleDeleteSetup = (setupId) => {
-    if (confirm('Are you sure you want to delete this setup?')) {
+    if (confirm("Are you sure you want to delete this setup?")) {
       onSetupDelete(setupId);
     }
   };
@@ -52,10 +59,7 @@ const SetupManager = ({
 
   return (
     <div className="flex items-center space-x-2 mb-4">
-      <Select 
-        value={currentSetup?.id || ''} 
-        onValueChange={onSetupChange}
-      >
+      <Select value={currentSetup?.id || ""} onValueChange={onSetupChange}>
         <SelectTrigger className="w-[300px]">
           <SelectValue placeholder="Select a setup">
             {currentSetup?.simulationName || "Select a setup"}
@@ -64,7 +68,7 @@ const SetupManager = ({
         <SelectContent>
           {setups.map((setup) => (
             <SelectItem key={setup.id} value={setup.id}>
-              {setup.simulationName || 'Unnamed Setup'}
+              {setup.simulationName || "Unnamed Setup"}
             </SelectItem>
           ))}
         </SelectContent>
@@ -122,12 +126,13 @@ const SetupManager = ({
               placeholder="Enter name for the copy"
             />
             <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsCopyDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsCopyDialogOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button onClick={confirmCopySetup}>
-                Create Copy
-              </Button>
+              <Button onClick={confirmCopySetup}>Create Copy</Button>
             </div>
           </div>
         </DialogContent>
@@ -140,20 +145,20 @@ const SetupManager = ({
             <DialogDescription className="pt-4">
               <Alert variant="destructive">
                 <AlertDescription>
-                  This action will permanently delete all setups and cannot be undone.
-                  All your saved configurations will be lost.
+                  This action will permanently delete all setups and cannot be
+                  undone. All your saved configurations will be lost.
                 </AlertDescription>
               </Alert>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4 space-x-2">
-            <Button variant="outline" onClick={() => setIsWipeDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsWipeDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={confirmWipeStorage}
-            >
+            <Button variant="destructive" onClick={confirmWipeStorage}>
               Yes, Clear Everything
             </Button>
           </DialogFooter>
