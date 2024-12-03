@@ -117,6 +117,205 @@ const QuoteCalculator = () => {
   const repeatTimer = useRef(null);
   const repeatInterval = useRef(null);
   const isLoadingSetup = useRef(false);
+  const autoSaveTimeout = useRef(null);
+
+  const sortedPredefinedRoles = React.useMemo(() => {
+    return [...predefinedRoles].sort((a, b) => a.name.localeCompare(b.name));
+  }, [predefinedRoles]);
+
+  useEffect(() => {
+    console.log("QuoteCalculator component loaded");
+  }, []);
+
+  useEffect(() => {
+    console.log("predefinedRoles updated:", predefinedRoles);
+  }, [predefinedRoles]);
+
+  useEffect(() => {
+    initializeState();
+  }, []);
+
+  useEffect(() => {
+    if (chunks.length > 0 && !chunks.includes(activeTab)) {
+      setActiveTab(chunks[0]);
+    }
+  }, [chunks, activeTab]);
+
+  useEffect(() => {
+    document.body.classList.toggle("dark", darkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
+    calculateBudget();
+  }, [
+    commitments,
+    hourlyRates,
+    roles,
+    workingDays,
+    workingHours,
+    chunks,
+    hourlyCosts,
+    roleDiscounts,
+  ]);
+
+  // Add this effect to initialize the first setup
+  useEffect(() => {
+    const savedSetups = localStorage.getItem("quoteSetups");
+    if (savedSetups) {
+      const parsed = JSON.parse(savedSetups);
+      setSetups(parsed);
+      if (parsed.length > 0) {
+        loadSetup(parsed[0].id);
+      }
+    } else {
+      // Create initial setup
+      const initialSetup = {
+        id: Date.now().toString(),
+        version: VERSION,
+        simulationName: "",
+        simulationDescription: "",
+        chunks: ["Dummy chunk 1 (remove, then add your own)", "Dummy chunk 2"],
+        roles: [
+          {
+            id: "1",
+            name: "Dummy role (remove, then add your lineup)",
+            code: "303",
+            alias: "",
+          },
+        ],
+        roleDiscounts: {},
+        commitments: {},
+        hourlyRates: {},
+        hourlyCosts: {},
+        workingDays: {},
+        workingHours: {},
+        rateCardName: "",
+        predefinedRoles: predefinedRoles,
+        chunkOrder: [],
+        discount: 0,
+        currency: "SEK",
+        customCurrency: "",
+      };
+
+      setSetups([initialSetup]);
+      setCurrentSetupId(initialSetup.id);
+      localStorage.setItem("quoteSetups", JSON.stringify([initialSetup]));
+    }
+  }, []);
+
+  // Ensure we always have a current setup if setups exist
+  useEffect(() => {
+    if (setups.length > 0 && !currentSetupId) {
+      loadSetup(setups[0].id);
+    }
+  }, [setups, currentSetupId]);
+
+  // Add this effect to auto-save changes
+  useEffect(() => {
+    if (currentSetupId && !isLoadingSetup.current) {
+      // Clear any pending autosave
+      if (autoSaveTimeout.current) {
+        clearTimeout(autoSaveTimeout.current);
+      }
+
+      // Set a new delayed autosave
+      autoSaveTimeout.current = setTimeout(() => {
+        saveCurrentSetup();
+      }, 1000); // Wait 1 second after last change before saving
+    }
+
+    // Cleanup
+    return () => {
+      if (autoSaveTimeout.current) {
+        clearTimeout(autoSaveTimeout.current);
+      }
+    };
+  }, [
+    simulationName,
+    simulationDescription,
+    chunks,
+    roles,
+    commitments,
+    hourlyRates,
+    hourlyCosts,
+    workingDays,
+    workingHours,
+    rateCardName,
+    predefinedRoles,
+    chunkOrder,
+    discount,
+    roleDiscounts,
+    currency,
+    customCurrency,
+  ]);
+
+  useEffect(() => {
+    console.log("Setup changed:", {
+      currentSetupId,
+      roleDiscounts,
+      isLoadingSetup: isLoadingSetup.current,
+    });
+  }, [currentSetupId]);
+
+  useEffect(() => {
+    // Only run this effect if we actually need to update something
+    const needsUpdate =
+      selectedChunks.length === 0 || (!activeTab && selectedChunks.length > 0);
+
+    if (needsUpdate) {
+      if (selectedChunks.length === 0) {
+        setSelectedChunks(chunks);
+      }
+      if (!activeTab && selectedChunks.length > 0) {
+        setActiveTab(selectedChunks[selectedChunks.length - 1]);
+      }
+    }
+  }, [selectedChunks, chunks, activeTab]);
+
+  useEffect(() => {
+    if (editingChunk && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [editingChunk]);
+
+  // Clean up on component unmount
+  useEffect(() => {
+    return () => {
+      cleanupTimers();
+    };
+  }, []);
+
+  const initializeState = () => {
+    const initialCommitments = {};
+    const initialHourlyRates = {};
+    const initialWorkingDays = {};
+    const initialWorkingHours = {};
+
+    roles.forEach((role) => {
+      initialCommitments[role.id] = {};
+      initialHourlyRates[role.id] = 1000;
+      initialWorkingHours[role.id] = 8; // Set default working hours to 8
+      chunks.forEach((chunk) => {
+        initialCommitments[role.id][chunk] = 100;
+        initialWorkingDays[chunk] = 21;
+      });
+    });
+
+    setCommitments(initialCommitments);
+    setHourlyRates(initialHourlyRates);
+    setWorkingDays(initialWorkingDays);
+    setWorkingHours(initialWorkingHours);
+    setActiveTab(chunks[0]);
+    setChunkOrder(chunks);
+    setCurrency("SEK");
+    setCustomCurrency("");
+
+    const initialHourlyCosts = {};
+    roles.forEach((role) => {
+      initialHourlyCosts[role.id] = 700; // Set default hourly cost to 700
+    });
+    setHourlyCosts(initialHourlyCosts);
+  };
 
   const handleExportJSON = () => {
     const stateToExport = {
@@ -195,14 +394,6 @@ const QuoteCalculator = () => {
     }
   };
 
-  const sortedPredefinedRoles = React.useMemo(() => {
-    return [...predefinedRoles].sort((a, b) => a.name.localeCompare(b.name));
-  }, [predefinedRoles]);
-
-  useEffect(() => {
-    console.log("QuoteCalculator component loaded");
-  }, []);
-
   const handleRateCardUploaded = (data) => {
     console.log("Rate card uploaded, received data:", data);
 
@@ -255,10 +446,6 @@ const QuoteCalculator = () => {
     setIsRateCardModalOpen(true);
   };
 
-  useEffect(() => {
-    console.log("predefinedRoles updated:", predefinedRoles);
-  }, [predefinedRoles]);
-
   const handleDataUploaded = (data) => {
     setChunks(data.chunks);
     setRoles(data.roles);
@@ -270,141 +457,6 @@ const QuoteCalculator = () => {
     setActiveTab(data.chunks[0]);
     setSelectedChunks([]);
   };
-
-  useEffect(() => {
-    initializeState();
-  }, []);
-
-  useEffect(() => {
-    if (chunks.length > 0 && !chunks.includes(activeTab)) {
-      setActiveTab(chunks[0]);
-    }
-  }, [chunks, activeTab]);
-
-  useEffect(() => {
-    document.body.classList.toggle("dark", darkMode);
-  }, [darkMode]);
-
-  const initializeState = () => {
-    const initialCommitments = {};
-    const initialHourlyRates = {};
-    const initialWorkingDays = {};
-    const initialWorkingHours = {};
-
-    roles.forEach((role) => {
-      initialCommitments[role.id] = {};
-      initialHourlyRates[role.id] = 1000;
-      initialWorkingHours[role.id] = 8; // Set default working hours to 8
-      chunks.forEach((chunk) => {
-        initialCommitments[role.id][chunk] = 100;
-        initialWorkingDays[chunk] = 21;
-      });
-    });
-
-    setCommitments(initialCommitments);
-    setHourlyRates(initialHourlyRates);
-    setWorkingDays(initialWorkingDays);
-    setWorkingHours(initialWorkingHours);
-    setActiveTab(chunks[0]);
-    setChunkOrder(chunks);
-    setCurrency("SEK");
-    setCustomCurrency("");
-
-    const initialHourlyCosts = {};
-    roles.forEach((role) => {
-      initialHourlyCosts[role.id] = 700; // Set default hourly cost to 700
-    });
-    setHourlyCosts(initialHourlyCosts);
-  };
-
-  useEffect(() => {
-    calculateBudget();
-  }, [
-    commitments,
-    hourlyRates,
-    roles,
-    workingDays,
-    workingHours,
-    chunks,
-    hourlyCosts,
-    roleDiscounts,
-  ]);
-
-  // Add this effect to initialize the first setup
-  useEffect(() => {
-    const savedSetups = localStorage.getItem("quoteSetups");
-    if (savedSetups) {
-      const parsed = JSON.parse(savedSetups);
-      setSetups(parsed);
-      if (parsed.length > 0) {
-        loadSetup(parsed[0].id);
-      }
-    } else {
-      // Create initial setup
-      const initialSetup = {
-        id: Date.now().toString(),
-        version: VERSION,
-        simulationName: "",
-        simulationDescription: "",
-        chunks: ["Dummy chunk 1 (remove, then add your own)", "Dummy chunk 2"],
-        roles: [
-          {
-            id: "1",
-            name: "Dummy role (remove, then add your lineup)",
-            code: "303",
-            alias: "",
-          },
-        ],
-        roleDiscounts: {},
-        commitments: {},
-        hourlyRates: {},
-        hourlyCosts: {},
-        workingDays: {},
-        workingHours: {},
-        rateCardName: "",
-        predefinedRoles: predefinedRoles,
-        chunkOrder: [],
-        discount: 0,
-        currency: "SEK",
-        customCurrency: "",
-      };
-
-      setSetups([initialSetup]);
-      setCurrentSetupId(initialSetup.id);
-      localStorage.setItem("quoteSetups", JSON.stringify([initialSetup]));
-    }
-  }, []);
-
-  // Ensure we always have a current setup if setups exist
-  useEffect(() => {
-    if (setups.length > 0 && !currentSetupId) {
-      loadSetup(setups[0].id);
-    }
-  }, [setups, currentSetupId]);
-
-  // Add this effect to auto-save changes
-  useEffect(() => {
-    if (currentSetupId && !isLoadingSetup.current) {
-      saveCurrentSetup();
-    }
-  }, [
-    simulationName,
-    simulationDescription,
-    chunks,
-    roles,
-    commitments,
-    hourlyRates,
-    hourlyCosts,
-    workingDays,
-    workingHours,
-    rateCardName,
-    predefinedRoles,
-    chunkOrder,
-    discount,
-    roleDiscounts,
-    currency,
-    customCurrency,
-  ]);
 
   // Add the setup management functions after state declarations
   // and before existing function declarations
@@ -443,6 +495,14 @@ const QuoteCalculator = () => {
   };
 
   const loadSetup = (setupId) => {
+    console.log("loadSetup called:", {
+      setupId,
+      previousSetupId: currentSetupId,
+      roleDiscounts,
+      triggerSource: new Error().stack,
+    });
+
+    cleanupTimers();
     isLoadingSetup.current = true; // Set flag before loading
     const setup = setups.find((s) => s.id === setupId);
     if (!setup) return;
@@ -600,54 +660,10 @@ const QuoteCalculator = () => {
   };
 
   const wipeStorage = () => {
-    // First clear localStorage
+    // Clear ALL localStorage data
     localStorage.clear();
-
-    // Reset all state variables
-    setSetups([]);
-    setCurrentSetupId(null);
-    setSimulationName("");
-    setSimulationDescription("");
-    setChunks([]);
-    setRoles([]);
-    setCommitments({});
-    setHourlyRates({});
-    setHourlyCosts({});
-    setWorkingDays({});
-    setWorkingHours({});
-    setRateCardName("");
-    setChunkOrder([]);
-    setDiscount(0);
-    setRoleDiscounts({});
-
-    // Wait for state updates to complete before creating new setup
-    setTimeout(() => {
-      // Create initial setup
-      const initialSetup = {
-        id: Date.now().toString(),
-        version,
-        simulationName: "Initial Setup",
-        simulationDescription: "",
-        chunks: [],
-        roles: [],
-        commitments: {},
-        hourlyRates: {},
-        hourlyCosts: {},
-        workingDays: {},
-        workingHours: {},
-        rateCardName: "",
-        predefinedRoles,
-        chunkOrder: [],
-        discount: 0,
-        roleDiscounts: {},
-        currency,
-        customCurrency,
-      };
-
-      setSetups([initialSetup]);
-      setCurrentSetupId(initialSetup.id);
-      localStorage.setItem("quoteSetups", JSON.stringify([initialSetup]));
-    }, 0);
+    // Reload the page to trigger the initial load effect
+    window.location.reload();
   };
 
   const calculateBudget = () => {
@@ -1076,15 +1092,6 @@ const QuoteCalculator = () => {
     setActiveTab(chunk);
   };
 
-  useEffect(() => {
-    if (selectedChunks.length === 0) {
-      setSelectedChunks(chunks);
-    }
-    if (selectedChunks.length > 0 && !activeTab) {
-      setActiveTab(selectedChunks[0]);
-    }
-  }, [selectedChunks, chunks, activeTab]);
-
   const handleChunkDoubleClick = (chunk) => {
     setEditingChunk(chunk);
     // Use setTimeout to ensure the input is rendered before trying to focus and select
@@ -1138,22 +1145,15 @@ const QuoteCalculator = () => {
     }
   };
 
-  useEffect(() => {
-    if (editingChunk && editInputRef.current) {
-      editInputRef.current.focus();
-    }
-  }, [editingChunk]);
-
-  useEffect(() => {
-    if (selectedChunks.length > 0) {
-      setActiveTab(selectedChunks[selectedChunks.length - 1]);
-    } else {
-      setActiveTab("");
-    }
-  }, [selectedChunks]);
-
   // Role discount handlers
   const handleDecreaseRate = (roleId, chunk) => {
+    console.log("handleDecreaseRate called:", {
+      roleId,
+      chunk,
+      currentSetupId,
+      triggerSource: new Error().stack,
+    });
+
     setRoleDiscounts((prev) => {
       const currentDiscounts = prev[chunk] || {};
       const currentDiscount = currentDiscounts[roleId] || 0;
@@ -1170,6 +1170,13 @@ const QuoteCalculator = () => {
   };
 
   const handleIncreaseRate = (roleId, chunk) => {
+    console.log("handleIncreaseRate called:", {
+      roleId,
+      chunk,
+      currentSetupId,
+      triggerSource: new Error().stack, // This will show us where this is being called from
+    });
+
     setRoleDiscounts((prev) => {
       const currentDiscounts = prev[chunk] || {};
       const currentDiscount = currentDiscounts[roleId] || 0;
@@ -1181,21 +1188,18 @@ const QuoteCalculator = () => {
 
       const newDiscount = Math.max(0, currentDiscount - 1);
 
-      const newChunkDiscounts = { ...currentDiscounts };
+      // Batch the updates
       if (newDiscount === 0) {
-        delete newChunkDiscounts[roleId];
-      } else {
-        newChunkDiscounts[roleId] = newDiscount;
-      }
-
-      if (Object.keys(newChunkDiscounts).length === 0) {
         const { [chunk]: _, ...rest } = prev;
         return rest;
       }
 
       return {
         ...prev,
-        [chunk]: newChunkDiscounts,
+        [chunk]: {
+          ...currentDiscounts,
+          [roleId]: newDiscount,
+        },
       };
     });
   };
@@ -1214,29 +1218,27 @@ const QuoteCalculator = () => {
     repeatTimer.current = setTimeout(() => {
       repeatInterval.current = setInterval(() => {
         if (handler === handleIncreaseRate) {
-          const currentDiscount = roleDiscounts[chunk]?.[roleId] || 0;
-          if (currentDiscount > 0) {
-            handler(roleId, chunk);
-          } else {
-            cleanupTimers();
-          }
+          // Get the current discount value from within the state setter
+          setRoleDiscounts((prev) => {
+            const currentDiscount = prev[chunk]?.[roleId] || 0;
+            if (currentDiscount > 0) {
+              handler(roleId, chunk);
+              return prev; // Return unchanged state
+            } else {
+              cleanupTimers();
+              return prev; // Return unchanged state
+            }
+          });
         } else {
           handler(roleId, chunk);
         }
-      }, 0);
+      }, 50);
     }, 400);
   };
 
   const handleMouseUp = () => {
     cleanupTimers();
   };
-
-  // Clean up on component unmount
-  useEffect(() => {
-    return () => {
-      cleanupTimers();
-    };
-  }, []);
 
   const handleDownloadCSV = () => {
     const csvContent = generateCSV(
@@ -2167,6 +2169,7 @@ const QuoteCalculator = () => {
                                       )
                                     }
                                     onTouchEnd={handleMouseUp}
+                                    onBlur={handleMouseUp}
                                   >
                                     <span className="text-xs font-bold">+</span>
                                   </Button>
@@ -2193,6 +2196,7 @@ const QuoteCalculator = () => {
                                     )
                                   }
                                   onTouchEnd={handleMouseUp}
+                                  onBlur={handleMouseUp}
                                 >
                                   <span className="text-xs font-bold">−</span>
                                 </Button>
