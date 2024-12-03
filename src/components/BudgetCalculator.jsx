@@ -132,10 +132,6 @@ const QuoteCalculator = () => {
   }, [predefinedRoles]);
 
   useEffect(() => {
-    initializeState();
-  }, []);
-
-  useEffect(() => {
     if (chunks.length > 0 && !chunks.includes(activeTab)) {
       setActiveTab(chunks[0]);
     }
@@ -159,49 +155,89 @@ const QuoteCalculator = () => {
   ]);
 
   // Add this effect to initialize the first setup
-  useEffect(() => {
-    const savedSetups = localStorage.getItem("quoteSetups");
-    if (savedSetups) {
-      const parsed = JSON.parse(savedSetups);
-      setSetups(parsed);
-      if (parsed.length > 0) {
-        loadSetup(parsed[0].id);
-      }
-    } else {
-      // Create initial setup
-      const initialSetup = {
-        id: Date.now().toString(),
-        version: VERSION,
-        simulationName: "",
-        simulationDescription: "",
-        chunks: ["Dummy chunk 1 (remove, then add your own)", "Dummy chunk 2"],
-        roles: [
-          {
-            id: "1",
-            name: "Dummy role (remove, then add your lineup)",
-            code: "303",
-            alias: "",
-          },
-        ],
-        roleDiscounts: {},
-        commitments: {},
-        hourlyRates: {},
-        hourlyCosts: {},
-        workingDays: {},
-        workingHours: {},
-        rateCardName: "",
-        predefinedRoles: predefinedRoles,
-        chunkOrder: [],
-        discount: 0,
-        currency: "SEK",
-        customCurrency: "",
-      };
-
-      setSetups([initialSetup]);
-      setCurrentSetupId(initialSetup.id);
-      localStorage.setItem("quoteSetups", JSON.stringify([initialSetup]));
+useEffect(() => {
+  const savedSetups = localStorage.getItem("quoteSetups");
+  if (savedSetups) {
+    const parsed = JSON.parse(savedSetups);
+    setSetups(parsed);
+    if (parsed.length > 0) {
+      loadSetup(parsed[0].id);
     }
-  }, []);
+  } else {
+    // Create initial setup with properly initialized state
+    const initialChunks = ["Dummy chunk 1 (remove, then add your own)", "Dummy chunk 2"];
+    const initialRoles = [
+      {
+        id: "1",
+        name: "Dummy role (remove, then add your lineup)",
+        code: "303",
+        alias: "",
+      },
+    ];
+
+    // Initialize all required state objects
+    const initialCommitments = {};
+    const initialHourlyRates = {};
+    const initialHourlyCosts = {};
+    const initialWorkingDays = {};
+    const initialWorkingHours = {};
+
+    initialRoles.forEach((role) => {
+      initialCommitments[role.id] = {};
+      initialHourlyRates[role.id] = 1000;
+      initialHourlyCosts[role.id] = 700;
+      initialWorkingHours[role.id] = 8;
+      initialChunks.forEach((chunk) => {
+        initialCommitments[role.id][chunk] = 100;
+        initialWorkingDays[chunk] = 21;
+      });
+    });
+
+    const initialSetup = {
+      id: Date.now().toString(),
+      version: VERSION,
+      simulationName: "",
+      simulationDescription: "",
+      chunks: initialChunks,
+      roles: initialRoles,
+      roleDiscounts: {},
+      commitments: initialCommitments,
+      hourlyRates: initialHourlyRates,
+      hourlyCosts: initialHourlyCosts,
+      workingDays: initialWorkingDays,
+      workingHours: initialWorkingHours,
+      rateCardName: "",
+      predefinedRoles: predefinedRoles,
+      chunkOrder: initialChunks,
+      discount: 0,
+      currency: "SEK",
+      customCurrency: "",
+    };
+
+    setSetups([initialSetup]);
+    setCurrentSetupId(initialSetup.id);
+
+    // Set all state directly instead of relying on loadSetup
+    setSimulationName("");
+    setSimulationDescription("");
+    setChunks(initialChunks);
+    setRoles(initialRoles);
+    setCommitments(initialCommitments);
+    setHourlyRates(initialHourlyRates);
+    setHourlyCosts(initialHourlyCosts);
+    setWorkingDays(initialWorkingDays);
+    setWorkingHours(initialWorkingHours);
+    setRateCardName("");
+    setChunkOrder(initialChunks);
+    setDiscount(0);
+    setRoleDiscounts({});
+    setCurrency("SEK");
+    setCustomCurrency("");
+    setActiveTab(initialChunks[0]);
+    
+    localStorage.setItem("quoteSetups", JSON.stringify([initialSetup]));
+  }
+}, []);
 
   // Ensure we always have a current setup if setups exist
   useEffect(() => {
