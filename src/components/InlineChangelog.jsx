@@ -3,6 +3,13 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const changelogData = [
   {
+    version: "0.13.0",
+    date: "2024-12-05",
+    changes: [
+      "Currency conversion"
+    ]
+  },
+  {
     version: "0.12.0",
     date: "2024-12-03",
     changes: [

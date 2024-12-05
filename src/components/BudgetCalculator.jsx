@@ -43,7 +43,7 @@ import InlineChangelog from "./InlineChangelog";
 import CurrencySelect from "./CurrencySelect";
 import SetupManager from "./SetupManager";
 
-const VERSION = "0.12.1";
+const VERSION = "0.13.0";
 
 const formatCurrency = (value) => Math.round(value).toLocaleString();
 
@@ -1283,7 +1283,7 @@ const QuoteCalculator = () => {
       repeatInterval.current = null;
     }
     setIsHolding(false);
-  };  
+  };
 
   const handleDownloadCSV = () => {
     const csvContent = generateCSV(
@@ -1484,6 +1484,47 @@ const QuoteCalculator = () => {
     return currency;
   };
 
+  const handleCurrencyConversion = (rate) => {
+    // Convert hourly rates
+    setHourlyRates((prev) => {
+      const converted = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        converted[key] = Math.round(value * rate);
+      });
+      return converted;
+    });
+
+    // Convert hourly costs
+    setHourlyCosts((prev) => {
+      const converted = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        converted[key] = Math.round(value * rate);
+      });
+      return converted;
+    });
+
+    // Convert predefined roles rates and costs
+    setPredefinedRoles((prev) =>
+      prev.map((role) => ({
+        ...role,
+        hourlyRate: Math.round(role.hourlyRate * rate),
+        hourlyCost: Math.round(role.hourlyCost * rate),
+      })),
+    );
+
+    // Convert role-specific discounts
+    setRoleDiscounts((prev) => {
+      const converted = {};
+      Object.entries(prev).forEach(([chunk, roleDiscounts]) => {
+        converted[chunk] = {};
+        Object.entries(roleDiscounts).forEach(([roleId, discount]) => {
+          converted[chunk][roleId] = Math.round(discount * rate);
+        });
+      });
+      return converted;
+    });
+  };
+
   return (
     <div className={`p-4 w-full min-w-fit ${darkMode ? "dark" : ""}`}>
       <div className="mb-6">
@@ -1507,6 +1548,7 @@ const QuoteCalculator = () => {
               onChange={setCurrency}
               customCurrency={customCurrency}
               onCustomCurrencyChange={setCustomCurrency}
+              onConvertCurrency={handleCurrencyConversion}
             />
             <Button
               variant="ghost"
